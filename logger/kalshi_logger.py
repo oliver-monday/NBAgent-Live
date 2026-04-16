@@ -22,9 +22,11 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+import re
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -47,6 +49,36 @@ NBA_CANDIDATE_SERIES_TICKERS = [
     "KXNBASERIES",
     "KXNBA",  # likely championship, but worth probing in case it ever lists games
 ]
+
+# Per-game market ticker format: <SERIES_PREFIX>-YYMMMDD<TEAMS>-<SIDE>
+# Example: KXNBAGAME-26APR17GSWPHX-PHX  →  game date = 2026-04-17 (ET)
+# Kalshi uses ET for the date prefix (NBA's scheduling timezone).
+_TICKER_DATE_RE = re.compile(r"^[A-Z]+-(\d{2})([A-Z]{3})(\d{2})")
+_MONTH_MAP = {
+    "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
+    "JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12,
+}
+ET = ZoneInfo("America/New_York")
+
+
+def parse_ticker_game_date(ticker: Optional[str]) -> Optional[date]:
+    """Extract the game date from a Kalshi per-game market ticker.
+    Returns None for tickers that don't match the per-game format
+    (e.g. series markets, championship markets)."""
+    if not ticker:
+        return None
+    m = _TICKER_DATE_RE.match(ticker)
+    if not m:
+        return None
+    yy, mmm, dd = m.group(1), m.group(2), m.group(3)
+    month = _MONTH_MAP.get(mmm)
+    if month is None:
+        return None
+    try:
+        return date(2000 + int(yy), month, int(dd))
+    except ValueError:
+        return None
+
 
 # ---- Utilities ----------------------------------------------------------
 
@@ -126,24 +158,23 @@ def discover_nba_game_markets() -> List[Dict[str, Any]]:
                 m["_discovered_via_series"] = series
                 candidates.append(m)
 
-    # Filter to per-game markets:
-    # Per-game markets typically have a close timestamp within 24 hours
-    # (games finish within a few hours), unlike season-long championship/qualifier markets.
-    now_ts = int(time.time())
+    # Filter to per-game markets by parsing the game date from the ticker.
+    # Kalshi playoff markets have close_time set to the series-conclusion
+    # buffer (~2 weeks out), so close_ts is not usable as a "game is today"
+    # signal. The ticker prefix (e.g. KXNBAGAME-26APR17GSWPHX-PHX) encodes
+    # the game date in ET, which is the correct field.
+    #
+    # Accept tickers dated within ±1 day of today ET. The ±1 window covers:
+    #   - today's games (primary case)
+    #   - games that cross midnight ET (late West Coast tips)
+    #   - early listings for tomorrow (pre-tip capture on morning block)
+    today_et = datetime.now(ET).date()
     game_markets: List[Dict[str, Any]] = []
     for m in candidates:
-        close_ts = m.get("close_ts") or m.get("close_time")
-        if isinstance(close_ts, str):
-            # Sometimes returned as ISO string
-            try:
-                close_ts = int(datetime.fromisoformat(close_ts.replace("Z", "+00:00")).timestamp())
-            except Exception:
-                close_ts = None
-        if close_ts is None:
-            # Can't filter by time — include and let downstream filter
-            game_markets.append(m)
+        game_date = parse_ticker_game_date(m.get("ticker"))
+        if game_date is None:
             continue
-        if 0 < close_ts - now_ts < 36 * 3600:
+        if abs((game_date - today_et).days) <= 1:
             game_markets.append(m)
 
     return game_markets
