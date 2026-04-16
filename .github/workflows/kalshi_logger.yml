@@ -1,0 +1,48 @@
+name: kalshi_logger
+
+on:
+  schedule:
+    # Three daily blocks, each running up to ~5h15m.
+    # Self-terminates early if no active NBA markets for 15 min.
+    # Times are UTC. April 2026 = PDT (UTC-7).
+    - cron: '30 13 * * *'   # 06:30 PT — morning block (weekend early games)
+    - cron: '30 18 * * *'   # 11:30 PT — midday block (weekend mid + weekday 2pm ET)
+    - cron: '30 23 * * *'   # 16:30 PT — evening block (weekday 7pm ET tips)
+  workflow_dispatch:        # manual trigger for ad-hoc runs
+
+concurrency:
+  group: kalshi_logger
+  cancel-in-progress: false  # blocks can overlap by design
+
+permissions:
+  contents: write
+
+jobs:
+  log_kalshi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330   # 5h30m hard cap (workflow level)
+    env:
+      TZ: America/Los_Angeles
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Kalshi logger
+        env:
+          POLL_INTERVAL_SEC: '30'
+          COMMIT_INTERVAL_SEC: '300'
+          MAX_RUN_SEC: '18900'    # 5h15m
+          IDLE_EXIT_SEC: '900'    # 15 min
+        run: python -m logger.kalshi_logger
