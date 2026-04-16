@@ -199,30 +199,51 @@ def fetch_market_state(market_ticker: str) -> Optional[Dict[str, Any]]:
 
 
 def snapshot_market(market_ticker: str, discovery_meta: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Build one snapshot row for a market. Returns None on fetch failure."""
+    """Build one snapshot row for a market. Returns None on fetch failure.
+
+    Prices are kept as raw string decimals in dollars (e.g. '0.67') — lossless;
+    cast to Decimal/float downstream in analysis. Sizes and volumes use Kalshi's
+    fixed-point numeric representation (`*_fp`), kept as-is.
+
+    Orderbook payload shape (observed 2026-04-16):
+      {"yes_dollars": [[price_str, size_str], ...],
+       "no_dollars":  [[price_str, size_str], ...]}
+    Depth ~30 levels per side across the penny grid.
+    """
     state = fetch_market_state(market_ticker)
     ob = fetch_orderbook(market_ticker)
     if state is None and ob is None:
         return None
+    s = state or {}
     ts = datetime.now(timezone.utc).isoformat()
     return {
         "ts": ts,
         "ticker": market_ticker,
-        "event_ticker": discovery_meta.get("event_ticker"),
+        "event_ticker": discovery_meta.get("event_ticker") or s.get("event_ticker"),
         "series": discovery_meta.get("_discovered_via_series"),
-        "title": discovery_meta.get("title") or (state or {}).get("title"),
-        "status": (state or {}).get("status"),
-        "close_ts": (state or {}).get("close_ts"),
-        # Prices in cents (integer) are Kalshi's common representation;
-        # some fields return dollars. We log both when available.
-        "yes_bid": (state or {}).get("yes_bid"),
-        "yes_ask": (state or {}).get("yes_ask"),
-        "no_bid": (state or {}).get("no_bid"),
-        "no_ask": (state or {}).get("no_ask"),
-        "last_price": (state or {}).get("last_price"),
-        "volume": (state or {}).get("volume"),
-        "volume_24h": (state or {}).get("volume_24h"),
-        "open_interest": (state or {}).get("open_interest"),
+        "title": discovery_meta.get("title") or s.get("title"),
+        "status": s.get("status"),
+        # Timestamps — all ISO strings from the API
+        "close_time": s.get("close_time"),
+        "open_time": s.get("open_time"),
+        "updated_time": s.get("updated_time"),
+        # Prices — raw string decimals in dollars
+        "yes_bid_dollars": s.get("yes_bid_dollars"),
+        "yes_ask_dollars": s.get("yes_ask_dollars"),
+        "no_bid_dollars": s.get("no_bid_dollars"),
+        "no_ask_dollars": s.get("no_ask_dollars"),
+        "last_price_dollars": s.get("last_price_dollars"),
+        # Top-of-book sizes — fixed-point numeric. no_* mirrors included
+        # speculatively; if they come back null we drop them in a followup.
+        "yes_bid_size_fp": s.get("yes_bid_size_fp"),
+        "yes_ask_size_fp": s.get("yes_ask_size_fp"),
+        "no_bid_size_fp": s.get("no_bid_size_fp"),
+        "no_ask_size_fp": s.get("no_ask_size_fp"),
+        # Market-level liquidity / volume / OI
+        "liquidity_dollars": s.get("liquidity_dollars"),
+        "volume_fp": s.get("volume_fp"),
+        "volume_24h_fp": s.get("volume_24h_fp"),
+        "open_interest_fp": s.get("open_interest_fp"),
         # Full orderbook depth — trim client-side later if storage grows
         "orderbook": ob,
     }

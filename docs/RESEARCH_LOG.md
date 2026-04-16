@@ -38,3 +38,13 @@ Tight tracking. If this generalizes, **ESPN's WP timeseries becomes a usable his
 3. **Pre-game spread integration.** Remove survivorship bias in competitive-game filter.
 4. **Multi-season backfill.** Confirm stability (2014-2023 data available).
 5. **Cold-model probe.** Check whether residual survives a properly empirical WP model.
+
+## 2026-04-16 — Kalshi market-data schema notes (Phase 1 probe)
+
+Discovered while probing `KXNBAGAME-26APR17GSWPHX-PHX` pre-tip:
+
+- **Field naming.** Kalshi's market-state endpoint now returns prices as string decimals under `*_dollars` suffixes (e.g. `yes_bid_dollars: "0.30"`), and volume / OI / sizes as fixed-point numerics under `*_fp` suffixes. Legacy integer-cents field names (`yes_bid`, `volume`, etc.) are gone. `close_ts` (epoch int) is also gone — only `close_time` (ISO string) is returned.
+- **Orderbook shape.** Payload wrapper key is still `orderbook`. Inner structure is `{yes_dollars: [[price_str, size_str], ...], no_dollars: [[price_str, size_str], ...]}` with ~30 levels per side covering the full penny grid. Both price and size are string decimals in dollars.
+- **Per-game market mirroring.** Each game lists *two* per-game tickers (e.g. `…GSWPHX-PHX` and `…GSWPHX-GSW`) — YES on each side. Same underlying event; we snapshot both. Redundant in steady state but cheap (~1.7 KB per snapshot).
+- **Pre-tip liquidity floor.** Hours before tip, both sides of GSW-PHX orderbook sat at `$0.01 × $26,300` top-of-book with similar depth on the other extreme. This is resting market-maker liquidity at the penny grid boundaries, not real pricing. **Implication for Phase 3:** tradeable-window definitions must filter by game-has-started, not just time-remaining — pre-tip snapshots carry no pricing signal regardless of how early the block ran.
+- **Snapshot size.** 1.7 KB per snapshot at 30-level depth. Full playoff run (~2 months, 4 markets × 30s poll) ≈ 1 GB. No action needed; revisit before any multi-season fanout.
