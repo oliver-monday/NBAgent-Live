@@ -147,6 +147,7 @@ memory as starting from the first session's context.
 
 ## Pointers
 
+- `docs/THESIS.md` — long-term project thesis and framing.
 - `docs/RESEARCH_LOG.md` — current findings, what has and hasn't
   been validated yet.
 - `docs/ROADMAP_active.md` — next phases.
