@@ -425,6 +425,186 @@ so the project remembers what it's trying to capture:
 
 ---
 
+## 6. Pre-data hypotheses (written 2026-04-17, before Phase 3A)
+
+Directional predictions about what Phase 3A analysis will show.
+Recorded pre-data to prevent post-hoc rationalization. Each
+hypothesis has a concrete confirmation/denial criterion tied to
+Phase 3A output. Retire by appending a dated result line — do
+not delete the original prediction.
+
+### 6.1 ESPN calibration residual: smaller than Stern, still positive
+
+**Prediction:** The +9pp residual at the tails (teams priced ≤10%
+WP actually win ~20%) will shrink to +4-6pp when measured against
+ESPN's own WP model instead of Stern. ESPN's model is better than
+Stern at the extremes because it has play-type awareness and
+game-state features, but it still underweights the true comeback
+rate because modern NBA teams are *coached* to maximize variance
+when trailing late (intentional fouling, 3-point shooting
+strategies). This is a structural game feature that any
+time-and-margin model will underestimate.
+
+**Implication:** Strategy 2 survives but with thinner margins than
+the pilot suggested. Still positive-EV after fees (per `FEES.md`,
+fees shift break-even by <1pp), but less robust to noise.
+
+**Confirmed if:** Residual is +3pp to +7pp across tail buckets
+(WP ≤ 0.15) in Phase 3A Part 2 output.
+
+**Denied if:** Residual is <+2pp (ESPN is well-calibrated at
+extremes — the +9pp was a Stern artifact and Strategy 2's edge
+against ESPN-style pricing evaporates) OR >+8pp (ESPN is worse
+than Stern at extremes, which would be surprising and worth
+investigating).
+
+**Relates to:** §1.1, §1.2, Strategy 2 kill criteria.
+
+### 6.2 Temporal clustering is the bilateral bottleneck
+
+**Prediction:** ~15-20% of bilateral opportunities (both sides
+below $0.20) have sub-3-minute separation between the two dips,
+making them operationally untradeable for manual execution. The
+pilot's 23-minute median separation is real, but the left tail
+of the separation distribution matters more than the median for
+determining the *actionable* bilateral rate.
+
+**Implication:** The effective bilateral opportunity rate is
+~80-85% of the nominal rate. If ESPN-based bilateral <$0.20 rate
+is 25% of competitive games, the tradeable rate is ~20-21%.
+Still well above the kill criterion (12%), but a meaningful
+haircut.
+
+**Confirmed if:** Phase 3A Part 1 separation analysis shows
+15-25% of bilateral <$0.20 games have separation < 3 minutes.
+
+**Denied if:** Separation is nearly always large (>95% have ≥5
+min) — the two dips typically happen in different quarters, not
+the same late-game sequence. This would be the good outcome.
+
+**Relates to:** Strategy 1 kill criteria (criterion 1 requires
+≥3 min separation).
+
+### 6.3 Home/away dip asymmetry: away dips are more common
+
+**Prediction:** The away team's WP dips below $0.20 roughly 40%
+more often than the home team's WP does, because road teams
+trail more frequently and more deeply. However, bilateral rates
+benefit only ~10% from this asymmetry because the home-side dip
+is the bottleneck — home teams in competitive games rarely fall
+to extreme lows except during genuine upset-in-progress
+scenarios.
+
+**Implication:** Game selection should slightly favor games where
+the home team is a small underdog (spread +1 to +3) — these are
+the games most likely to produce home-side dips, unlocking the
+bilateral opportunity.
+
+**Confirmed if:** Phase 3A Part 4 shows away-side single dip
+rate is 30-50% higher than home-side; bilateral rate is only
+5-15% higher than a symmetric model would predict.
+
+**Denied if:** Dip rates are roughly symmetric. This would mean
+home-court advantage doesn't meaningfully affect within-game WP
+volatility at the extremes, which would be surprising.
+
+### 6.4 Pace dominates talent for swing propensity
+
+**Prediction:** Team-level bilateral dip rate correlates more
+strongly with pace (possessions per 48 minutes) than with team
+quality or record. High-pace teams (2025-26 examples: IND, ATL,
+SAC-type profiles) create more possessions, more scoring events,
+and more WP oscillation. Defensive slow-pace teams (CLE, NYK-
+type profiles) produce smoother WP curves with fewer extreme
+dips.
+
+**Implication:** For game selection in Phase 4, "pace of both
+teams" is a better filter than "quality of both teams." A
+competitive game between two fast teams is worth monitoring over
+a competitive game between two slow teams at the same spread.
+
+**Confirmed if:** Phase 3A Part 3 top-5 swing-propensity teams
+are disproportionately high-pace; bottom-5 are low-pace. A quick
+correlation of bilateral rate vs regular-season pace (available
+from NBA.com) confirms the relationship.
+
+**Denied if:** The ranking is driven by something else — e.g.,
+3-point attempt rate, bench depth, or late-game coaching
+tendencies. Any of these would be interesting alternative
+predictors.
+
+### 6.5 MM defense is weaker at extreme-low prices
+
+**Prediction:** Kalshi's market maker defends less aggressively
+at $0.05-$0.10 than at $0.20-$0.30. At extreme-low prices, the
+MM faces high gamma risk (a single scoring run can move the
+price $0.20 in seconds, blowing out any spread the MM was
+capturing), making it economically unattractive to quote
+tightly. If true, extreme-low-price opportunities are more
+genuine and more exploitable than moderate-low-price ones.
+
+**Implication:** Tighter entry thresholds ($0.10 rather than
+$0.20) may paradoxically be *more* exploitable. The kill
+criteria's ≤$0.20 entry threshold may be too generous — the
+real action is at ≤$0.10.
+
+**Cannot be tested in Phase 3A** — requires Kalshi orderbook
+data from Phase 1. Test in Phase 3B by examining: at moments
+when ESPN WP ≤ 0.10, is Kalshi's top-of-book resting size
+thinner than at ESPN WP ≈ 0.20-0.30? If yes, the MM is pulling
+back at extremes.
+
+**Relates to:** §2.1 (liquidity), §2.2 (adversarial MM dynamics).
+
+### 6.6 Betting flow creates exploitable non-game-state price moves
+
+**Prediction:** Kalshi prices sometimes move between plays (when
+the game state is static) due to order flow — a large order on
+one side shifts the price even though nothing happened on the
+court. This is noise from the thesis's perspective but creates
+additional volatility. It's good for Strategy 3 (more swings to
+trade) but complicates the ESPN-as-Kalshi-proxy assumption
+(prices diverge from the WP model during flow-driven moves).
+
+**Cannot be tested in Phase 3A** — requires paired Kalshi +
+ESPN data at play-level resolution. Test in Phase 3B by looking
+for Kalshi price changes during dead-ball periods where ESPN WP
+is unchanged.
+
+**Relates to:** §1.1 (Kalshi ≈ ESPN claim — flow-driven moves
+are a source of Kalshi-ESPN divergence that isn't model error).
+
+### 6.7 Sequential-opportunistic bilateral construction outperforms threshold scanning
+
+**Prediction:** A modified bilateral strategy — buy one side
+cheap when it dips, then actively seek the other side's dip
+later — has a higher completion rate than the strict "both sides
+below threshold in the same game" criterion. The difference is
+entry logic: instead of scanning for games where both sides have
+already dipped, you enter the first leg opportunistically and
+then wait for the second. This increases the window for the
+second leg (you don't need both to happen near-simultaneously)
+and converts some single-dip games into bilateral opportunities.
+
+**Implication:** The addressable opportunity rate may be higher
+than the bilateral dip rate suggests, because you're
+constructing bilateral positions across the game's natural
+rhythm rather than waiting for a specific threshold pattern.
+
+**Testable in Phase 3A** by modifying the bilateral analysis:
+instead of "did both sides dip below X in this game?" ask "if
+side A dipped below X, did side B subsequently dip below Y
+(where Y can be higher than X because leg 1 is already
+secured)?" For example: if away dips below $0.15, does home
+subsequently dip below $0.25? Combined cost $0.40, guaranteed
+$0.60 profit. This has lower per-trade profit but potentially
+much higher frequency.
+
+**Relates to:** §3.2 (strategies aren't fully orthogonal —
+this is the bridge between Strategy 1 and Strategy 3).
+
+---
+
 ## Resolution log
 
 Append dated entries as items are retired or new ones emerge. Do
