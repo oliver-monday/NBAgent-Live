@@ -211,3 +211,179 @@ The 2026-04-16 pilot entry (Stern, 2024-25) stands as pilot-era
 baseline. This entry reports new findings on different data
 (2025-26 regular season) and a different WP model (ESPN). No
 prior entry is retired or superseded.
+
+## 2026-04-17 — Phase 3A follow-up: pace (§6.4), sequential bilateral (§6.7), missing-games audit
+
+**Scope.** Closes the Phase 3A analysis arc:
+
+1. Formal §6 retirement lines added to
+   `docs/THESIS_open_questions.md` for §6.1, §6.2, §6.3 (from the
+   Phase 3A entry), §6.4 and §6.7 (from the follow-up).
+2. 9-missing-games audit — confirms whether the 1,234 / 1,243
+   coverage number cited in the Phase 3A entry stands and whether
+   the gap is benign.
+3. This entry.
+
+§6.5 and §6.6 remain open, blocked on Phase 3B (Kalshi data).
+
+**Source analyses:** Phase 3A entry above; `docs/analysis_outputs/3a_followup_2026_04_17.md`.
+
+### §6.4 pace correlation — denied
+
+Team pace (2025-26 regular season, basketball-reference) vs
+bilateral <0.20 involvement rate (|spread|≤6 subset):
+
+- Primary (n=29, OKC excluded at n=8 competitive games):
+  Spearman ρ = **+0.063** (p = 0.75), Pearson r = +0.080
+  (p = 0.68).
+- Including OKC (n=30): ρ = +0.071 (p = 0.71).
+
+Effectively zero. The ranked table contains no monotonic pattern:
+MIA ranks #1 in pace and #18 in involvement; HOU ranks #29 in
+pace and #5 in involvement; BOS ranks #30 in pace and #10 in
+involvement. The Top-5 / Bottom-5 cluster that prompted the
+hypothesis was noise.
+
+**Implication.** No pace-based game-selection heuristic falls out
+of this data. The Bottom-5 involvement ranks (TOR / NYK / SAC /
+DET / BKN) skew toward lower-quality teams in games that don't
+flip — potentially a team-quality-variance signal — but the data
+here doesn't support any specific replacement hypothesis. Not
+worth chasing absent an independent reason to.
+
+### §6.7 sequential-opportunistic bilateral — confirmed, reframed larger
+
+Three bilateral definitions tested across a 10-pair threshold
+grid (see follow-up MD for full table). Headline numbers at
+|spread|≤6:
+
+| (X, Y)       | Strict | Sequential | Asymmetric any-order |
+|--------------|--------|------------|----------------------|
+| (0.20, 0.20) | 26.6%  | 26.6%      | 26.6%                |
+| (0.15, 0.15) | 17.1%  | 17.1%      | 17.1%                |
+| (0.15, 0.30) | 17.1%  | 24.4%      | 47.5%                |
+| (0.20, 0.30) | 26.6%  | 34.2%      | 49.0%                |
+| (0.20, 0.35) | 26.6%  | 36.8%      | 58.5%                |
+
+Aggregate EV per competitive game (opportunity rate × taker-
+taker net per trade, from the FEES.md formula, no spread cost
+yet):
+
+- Strict (0.20, 0.20): 0.266 × $57.74 ≈ **$15.36 / game**
+- Asymmetric (0.20, 0.30): 0.490 × $47.40 ≈ **$23.23 / game** (+51%)
+- Asymmetric (0.15, 0.30): 0.475 × $52.63 ≈ **$25.00 / game** (+63%)
+- Asymmetric (0.20, 0.35): 0.585 × $42.27 ≈ **$24.73 / game** (+61%)
+
+**Methodology note.** The "sequential operational" definition the
+hypothesis originally proposed — requiring the tighter-X leg to
+come first — is more restrictive than the operationally relevant
+policy. A well-designed policy entering the first leg on
+whichever side dips below Y first, then seeking the other leg at
+X, captures close to the asymmetric any-order rate. The real
+operational rate for Strategy 1 sits between sequential and
+asymmetric any-order, much closer to the ceiling. Future strategy
+spec writing should not use the sequential-definition numbers as
+the operational rate — they're a conservative floor.
+
+**Implication.** Strategy 1's addressable universe is ~50% larger
+than the strict-bilateral frame suggested. Under the operational
+definition at (0.20, 0.30) on |spread|≤6 games, Phase 3B would
+need to produce a ~75% liquidity haircut (from 49.0% nominal to
+<12% effective) to push Strategy 1 below the kill-criteria
+graduation bar — a high bar. Graduation probability meaningfully
+up from the 3A read.
+
+### 9-missing-games audit
+
+**Audit flagged for investigation — open item NOT closed.**
+`data/nba_master_2025_26.csv` contains 1,243 gameIds;
+`data/espn_wp/` contains 1,243 WP files, of which **9 are empty
+(0 bytes)**. Gap after the Phase 3A join is 9 games.
+
+Findings diagnose the gap but flag a downstream idempotency bug:
+
+- **4 of 9** are 2026-02-15 All-Star Rising Stars exhibitions
+  (teams `STARS` / `STRIPES` / `WORLD`, gameIds 401838140-43).
+  ESPN does not provide a WP feed for these exhibition formats.
+  PBP scraped successfully (~75-82 KB each). **Benign.**
+- **4 of 9** are postponed/cancelled games with score 0-0 and
+  empty PBP files (401810384 CHI-MIA 2026-01-08, 401810499
+  MIN-GSW 2026-01-24, 401810506 MEM-DEN 2026-01-25, 401810507
+  MIL-DAL 2026-01-25). Games remain in the master CSV but were
+  never played. **Benign.**
+- **1 of 9** is a real completed game with missing WP feed:
+  401810469 CHI 138 - LAC 110 on 2026-01-20. PBP present
+  (242 KB, 514 plays); WP empty. Single ESPN WP feed gap — the
+  kind of one-off the Phase 3A entry predicted. Not recoverable
+  unless ESPN backfills its own WP data.
+
+Missing gameIds:
+
+| gameId    | date       | away    | home    | \|spread\| |
+|-----------|------------|---------|---------|----------|
+| 401810384 | 2026-01-08 | MIA     | CHI     | 7.0      |
+| 401810469 | 2026-01-20 | LAC     | CHI     | 2.5      |
+| 401810499 | 2026-01-24 | GSW     | MIN     | —        |
+| 401810506 | 2026-01-25 | DEN     | MEM     | —        |
+| 401810507 | 2026-01-25 | DAL     | MIL     | —        |
+| 401838140 | 2026-02-15 | WORLD   | STARS   | —        |
+| 401838141 | 2026-02-15 | STARS   | STRIPES | —        |
+| 401838142 | 2026-02-15 | WORLD   | STRIPES | —        |
+| 401838143 | 2026-02-15 | STARS   | STRIPES | —        |
+
+Four games on 2026-02-15 share a date (triggers the
+cluster-suspicious rule), but the cluster has a clean
+explanation — all four are All-Star tournament games on the
+same night, not a scraper-block pattern.
+
+**Action — idempotency bug confirmed.** `scrapers/espn_backfill.py`
+checks file existence only in its skip logic, not file size or
+content. Empty WP files are treated as successful scrapes, so
+re-running the backfill will NOT re-attempt 401810469 (the one
+recoverable game if ESPN ever populates its WP feed for it).
+Follow-up dispatch should change the skip predicate from
+"`wp_path.exists()`" to "`wp_path.exists() and
+wp_path.stat().st_size > 0`" (or equivalent), so transient
+empty-result scrapes get retried on subsequent runs. The
+exhibition-game and postponement-game empties would still
+correctly short-circuit after one retry because ESPN's response
+will remain empty for those — a cheap cost for a correctness win.
+
+**Coverage conclusion.** The 1,234 / 1,243 Phase 3A coverage
+cited above is accurate. The 9 missing games break down as 8
+non-recoverable (exhibitions + postponements) and 1 ESPN-gap
+(401810469). No systematic scraper failure; one backfill-
+idempotency bug to fix in a separate dispatch. Open item remains
+open pending the backfill fix.
+
+### Implications for strategy graduation (rollup)
+
+- **Strategy 1 (bilateral convergence):** graduation materially
+  less suspect after §6.7's reframing. Phase 3B liquidity numbers
+  remain load-bearing but the bar is now 75% haircut, not 54%.
+- **Strategy 2 (single-side mean-reversion):** unchanged from the
+  Phase 3A entry. Sits at +3pp residual vs ESPN; Kalshi residual
+  still the load-bearing unknown; §1.4 spread-heterogeneity
+  analysis may restructure the entry rule.
+- **Strategy 3 (active management):** not addressed by this
+  analysis. Requires Kalshi oscillation data from Phase 3B.
+
+### Open items
+
+- §1.4 retirement analyses (spread anchoring) — three sub-
+  analyses listed in `THESIS_open_questions.md` §1.4. Runnable
+  from existing ESPN data before Phase 3B.
+- Kalshi logger first-run verification still pending — evening
+  block 2026-04-17 was scheduled for GSW-PHX + CHA-ORL. Check
+  `data/orderbook_snapshots/2026-04-17.jsonl` on main.
+- Phase 3B scoping — deferred until Kalshi data accumulates
+  (target: 10–20 games).
+- `espn_backfill.py` skip-logic fix — detect empty WP files and
+  re-attempt on subsequent runs. Small, surgical, deferred to
+  its own dispatch.
+
+### Does not supersede
+
+The 2026-04-17 Phase 3A entry stands. This entry adds follow-up
+findings and closes the three open items listed in that entry
+(pace, sequential, missing-games audit).

@@ -54,6 +54,18 @@ is the exact profile that would hide this issue.
 
 **Update this section with dated evidence once data exists.**
 
+**Result (2026-04-17) — Partially confirmed.** Phase 3A
+calibration against the full 2025-26 ESPN WP dataset (see
+`docs/RESEARCH_LOG.md` 2026-04-17 Phase 3A entry) showed residual
++2.6 to +3.3pp across WP 0.075–0.20 buckets — at the low end of
+the "confirmed if +3 to +7pp" range. Strategy 2 edge against ESPN
+survives but is thinner than predicted. The Kalshi residual —
+which is what actually matters for Strategy 2 — is still blocked
+on Phase 3B. See §1.4 (added 2026-04-17) for a structural
+reframing: the +3pp residual may mask spread-heterogeneous
+regimes, in which case Strategy 2's entry rule needs
+spread-conditional stratification rather than a pooled threshold.
+
 ### 1.2 Pilot bilateral-dip frequencies are upper bounds
 
 **Claim in thesis:** "Pilot frequency (2024-25 data): ~30% of
@@ -579,6 +591,13 @@ the same late-game sequence. This would be the good outcome.
 **Relates to:** Strategy 1 kill criteria (criterion 1 requires
 ≥3 min separation).
 
+**Result (2026-04-17) — Strongly denied in the good direction.**
+Phase 3A measured 1.4% of bilateral <0.20 games at |spread|≤6 with
+<3 min separation (prediction was 15–20%). Median separation 18.0
+min of game clock; 97.3% ≥5 min. Temporal clustering is not the
+bilateral bottleneck. Strategy 1's graduation criterion 1 is
+comfortably satisfied on the separation dimension.
+
 ### 6.3 Home/away dip asymmetry: away dips are more common
 
 **Prediction:** The away team's WP dips below $0.20 roughly 40%
@@ -601,6 +620,19 @@ rate is 30-50% higher than home-side; bilateral rate is only
 **Denied if:** Dip rates are roughly symmetric. This would mean
 home-court advantage doesn't meaningfully affect within-game WP
 volatility at the extremes, which would be surprising.
+
+**Result (2026-04-17) — Denied on the rate dimension; partially
+supported on depth.** Phase 3A measured away dip rate 7–10%
+higher than home (not ~40%). Crossing rates are close to
+symmetric. However, dip *depth* is meaningfully asymmetric:
+median min WP home 0.115 vs away 0.081. The home-underdog
+game-selection implication the hypothesis gestured at deserves
+revisiting with dip depth (not crossing rate) as the dimension of
+interest — fold into the §1.4 retirement analyses rather than
+maintaining a standalone follow-up. For Strategy 1 the finding is
+neutral; for Strategy 2 the depth asymmetry is potentially
+material (away-side extreme lows sit further into the residual
+band than home-side ones).
 
 ### 6.4 Pace dominates talent for swing propensity
 
@@ -626,6 +658,23 @@ from NBA.com) confirms the relationship.
 3-point attempt rate, bench depth, or late-game coaching
 tendencies. Any of these would be interesting alternative
 predictors.
+
+**Result (2026-04-17) — Denied.** Phase 3A follow-up
+(`docs/analysis_outputs/3a_followup_2026_04_17.md`) measured
+Spearman ρ = +0.063 (p = 0.75) and Pearson r = +0.080 (p = 0.68)
+across 29 teams (OKC excluded at n=8). Correlation is effectively
+zero, and it survives including OKC (n=30: ρ = +0.071). The
+Top-5 / Bottom-5 pattern observed in Phase 3A was noise. MIA
+ranks #1 in pace and #18 in involvement; HOU ranks #29 in pace
+and #5 in involvement; the ranked table contains no monotonic
+signal. Retires the implied "favor high-pace matchups" game-
+selection heuristic with no replacement heuristic falling out of
+this data. Worth noting the Bottom-5 involvement rankings
+(TOR/NYK/SAC/DET/BKN) skew toward lower-quality teams playing
+games that don't flip — possibly a team-quality-variance signal
+rather than pace — but the data here neither supports nor refutes
+that hypothesis and it's not worth chasing absent a specific
+reason to.
 
 ### 6.5 MM defense is weaker at extreme-low prices
 
@@ -697,6 +746,45 @@ much higher frequency.
 **Relates to:** §3.2 (strategies aren't fully orthogonal —
 this is the bridge between Strategy 1 and Strategy 3).
 
+**Result (2026-04-17) — Confirmed, and operationally larger than
+the original framing.** Phase 3A follow-up
+(`docs/analysis_outputs/3a_followup_2026_04_17.md`) tested three
+bilateral definitions across a 10-pair threshold grid:
+
+- *Strict symmetric* — both sides dip below X. Baseline.
+- *Sequential operational* — side A dips below X at t1, side B
+  dips below Y at t2 > t1. The definition this hypothesis
+  originally proposed.
+- *Asymmetric any-order* — both sides dip (one below X, one
+  below Y) with no ordering constraint.
+
+At |spread|≤6, (0.20, 0.30): strict 26.6%, sequential 34.2%,
+asymmetric any-order 49.0%. At (0.15, 0.30): strict 17.1%,
+sequential 24.4%, asymmetric any-order 47.5%. Aggregate EV per
+competitive game (opportunity rate × taker-taker net per
+trade) is ~60% higher for relaxed thresholds in the (0.15, 0.30)
+/ (0.20, 0.30) neighborhood vs strict (0.20, 0.20).
+
+**Methodology note, material for the eventual strategy spec.**
+The hypothesis's "sequential" framing — requiring the tighter-X
+leg to come first — is unnecessarily restrictive. A well-designed
+policy ("enter whichever side dips below Y first, then enter the
+other side if it dips below X, with appropriate hold-for-better
+logic") captures close to the asymmetric any-order rate, not the
+sequential rate. The operationally relevant addressable universe
+is ~50% larger than the strict-bilateral frame suggested. The
+~60% aggregate-EV estimate is pre-Phase-3B — liquidity and
+spread haircuts still to apply — but the *ratio* between relaxed
+and strict is relatively insensitive to those haircuts since
+they scale both variants similarly.
+
+Implication: Strategy 1's graduation is substantially less
+suspect than the 3A strict-bilateral read suggested. Under the
+operational definition at (0.20, 0.30) on |spread|≤6 games,
+Phase 3B would need to deliver a ~75% liquidity haircut (from
+49.0% nominal to <12% effective) to push Strategy 1 below the
+graduation bar — a very high bar.
+
 ---
 
 ## Resolution log
@@ -723,3 +811,35 @@ consistent with the Stern-vs-ESPN pilot-to-3A bilateral-rate gap.
 Three retirement analyses listed; all runnable from existing ESPN
 data before Phase 3B. Strategy 2 entry rule and Strategy 3 exit
 rule may depend on the outcome.
+
+**2026-04-17 — §6.1 retired (partially confirmed).** ESPN
+calibration residual measured +2.6 to +3.3pp in the 7.5–20% WP
+band — low end of the predicted +3 to +7pp range. Strategy 2 edge
+against ESPN survives but thinner than predicted. Kalshi residual
+still pending Phase 3B. See inline result line on §6.1.
+
+**2026-04-17 — §6.2 retired (denied, good direction).** Only
+1.4% of bilateral <0.20 games had <3 min separation (prediction:
+15–20%). Temporal clustering is not the bilateral bottleneck.
+See inline result line on §6.2.
+
+**2026-04-17 — §6.3 retired (denied on rate, partially supported
+on depth).** Away dip rate only 7–10% higher than home (not ~40%),
+but dip depth asymmetric (median min WP home 0.115 vs away 0.081).
+Depth-based game-selection implication folds into §1.4 analyses.
+See inline result line on §6.3.
+
+**2026-04-17 — §6.4 retired (denied).** Team pace vs bilateral
+involvement Spearman ρ = +0.063 (p = 0.75). No correlation. The
+3A Top-5 / Bottom-5 pattern was noise. Retires the implied
+"favor high-pace matchups" heuristic with no replacement. See
+inline result line on §6.4.
+
+**2026-04-17 — §6.7 retired (confirmed, reframed larger).**
+Sequential-opportunistic bilateral raises |spread|≤6 rate from
+26.6% strict to 34.2% sequential to 49.0% asymmetric-any-order at
+(0.20, 0.30). Aggregate EV per competitive game ~60% higher for
+relaxed thresholds. Methodology note: asymmetric-any-order is
+closer to the true operational rate than sequential. Strategy 1's
+graduation is substantially less suspect. See inline result line
+on §6.7.
