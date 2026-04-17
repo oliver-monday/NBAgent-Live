@@ -100,6 +100,100 @@ the form: "Bilateral convergence produces guaranteed profit
 (ii) fillable notional ≥ $Z at target prices." Specific values
 come from the logged data.
 
+### 1.4 ESPN WP is spread-anchored, not purely game-state-driven
+
+**Claim:** ESPN's WP model blends a pre-game prior (from the
+opening spread / team-strength estimate) with in-game state
+(margin + time remaining). The prior carries meaningful weight
+throughout the game, not just pre-tip. When the score equalizes
+during play, ESPN WP tends to mean-revert toward the opening-
+line-implied probability rather than toward 50/50.
+
+**Status:** Suggestive qualitative evidence from 4/15 GSW-LAC
+Play-In (screenshots in project files). Opening line had GSW
++5.5ish (implied WP ≈ 30%). Two paired observations during the
+game:
+
+- 72-74 in the 3rd (~half the game played, competitive score):
+  ESPN GSW 29.7%. Close to the opening prior despite meaningful
+  game state.
+- 114-115 with <3 min left, score tied: ESPN GSW 33.2%. Still
+  anchored near the prior, not 50/50.
+
+Also consistent with Phase 3A's Stern-vs-ESPN bilateral-rate gap.
+Stern (Brownian bridge) has no prior; ESPN does; Stern produces
+higher bilateral-dip rates at every threshold; the ~5-15pp gap is
+roughly consistent with a prior-anchoring effect preventing
+underdog WP from collapsing as deeply during opponent runs. A
+mechanism-level explanation for a gap previously described only
+phenomenologically.
+
+**Why it matters:** Three downstream effects on the strategy spec.
+
+1. *Unified explanation for the pilot-vs-3A gap.* Not just "ESPN
+   is better at the tails" but specifically "ESPN's prior
+   prevents underdog WP from collapsing as deeply on opponent
+   runs." Implies Stern-era pilot bilateral rates are
+   systematically inflated relative to what ESPN — and likely
+   Kalshi, if §1.1 holds — would show. Haircut is
+   mechanism-driven, not random noise.
+
+2. *The +3pp calibration residual likely masks
+   spread-heterogeneous regimes.* A pre-game favorite sitting at
+   10% WP is in a deep-comeback situation where NBA's fat tails
+   matter most (late-game fouling, 3-point barrages, one-
+   possession scrambles). A pre-game underdog sitting at 10% WP
+   is near their prior — no particular reason to expect a
+   residual. Pooled across both regimes, the residual averages
+   out to +3pp. Split by pre-game spread, it may be +6-8pp for
+   favorites and ~0 for underdogs, or some other asymmetric
+   pattern. Directly affects Strategy 2's entry rule: "buy any
+   team at ≤$0.15" may need to become "buy a pre-game favorite
+   at ≤$0.15," which is a much narrower signal.
+
+3. *Strategy 3 exits target the opening line, not 50/50.* A
+   5-point dog entered at $0.12 during an opponent run has a
+   realistic exit target around $0.30-$0.35 (opening prior),
+   not $0.50. Swing size ≈ $0.20, not $0.38. Materially affects
+   sizing and which swings are worth capturing. The kill-
+   criteria requirement of "median swing capture ≥ $0.10" was
+   written before this reframing and may have been implicitly
+   assuming swings-to-midline rather than swings-to-prior.
+
+**What retires it:** Three concrete analyses off the existing
+ESPN data, no new scraping required. Ideally run as a unit
+before Phase 3B interpretation starts.
+
+- *Residual by pre-game spread bucket.* Stratify the Phase 3A
+  at-moment calibration residual table by pre-game spread (e.g.
+  buckets: favorite by ≥6, favorite by 3-6, pick'em ±3, dog by
+  3-6, dog by ≥6). Report the residual profile in each. §1.4
+  confirmed if the +3pp concentrates in pre-game favorites at
+  low WP; denied if residual is uniform across spread buckets.
+- *Score-tied WP regression on opening spread.* At all score-
+  tied moments with ≥5 min remaining, regress ESPN WP on
+  pre-game spread. Slope quantifies the prior weight directly.
+  §1.4 confirmed if slope is meaningfully >0 (e.g. 0.02+ per
+  point of spread, which would mean a 5-point favorite shows
+  ~10pp of prior weight at score-tied mid-game); denied if
+  slope is near zero.
+- *Post-dip mean-reversion target.* For all bilateral <0.20
+  dip events in the Phase 3A set, measure where WP mean-
+  reverts to (the local WP maximum following the dip, before
+  the next meaningful score change or game resolution).
+  Correlate with pre-game spread. §1.4 confirmed if
+  mean-reversion target tracks opening-line-implied prob; denied
+  if it tracks toward 0.50 regardless of spread.
+
+**Relates to:** §1.1 (if Kalshi also anchors to spread,
+Strategy 2's residual profile transfers cleanly; if Kalshi is
+less prior-weighted than ESPN, Strategy 2's edge vs. Kalshi
+could be *larger* than the ESPN residual suggests, though §6.5
+cuts the other direction). §1.2 (pilot bilateral rates as upper
+bounds — mechanism now specified). Strategy 2 kill criteria
+(residual may need to be evaluated spread-conditionally).
+Strategy 3 exit-target rules.
+
 ---
 
 ## 2. Structural risks
@@ -619,3 +713,13 @@ note.
 as the likely dominant non-fee execution cost. New open item: Phase
 3 must characterize realized spread distribution at target entry
 prices from logged orderbook data.
+
+**2026-04-17 — §1.4 added.** New load-bearing claim that ESPN WP
+is spread-anchored (prior-weighted) rather than purely
+game-state-driven. Motivated by qualitative observation from 4/15
+GSW-LAC Play-In (GSW pinned near opening-line-implied 30% at
+halftime AND at score-tied <3 min, no mean-reversion to 50/50) and
+consistent with the Stern-vs-ESPN pilot-to-3A bilateral-rate gap.
+Three retirement analyses listed; all runnable from existing ESPN
+data before Phase 3B. Strategy 2 entry rule and Strategy 3 exit
+rule may depend on the outcome.
