@@ -13,3 +13,7 @@ First verification of Phase 0+1 revealed the `discover_nba_game_markets` filter 
 ## 2026-04-16 — Phase 1 fix: snapshot field names updated to current Kalshi API
 
 Second Phase 1 verification pass revealed `snapshot_market` was reading legacy field names — every price / volume / OI field landed as null. Updated reads to current `*_dollars` / `*_fp` naming, kept raw string decimals (lossless; casting deferred to analysis), added `yes_bid_size_fp` / `yes_ask_size_fp` / `liquidity_dollars` / `open_time` / `updated_time`. Phase 1 remains *implemented but unverified in production* — the 4/17 Play-In slate (GSW-PHX, CHA-ORL) will be the first real shakedown.
+
+## 2026-04-17 — Phase 2a: ESPN WP + PBP scraper
+
+Implemented `scrapers/espn_scraper.py` — batch scraper for ESPN's game summary endpoint. Extracts win probability timeseries and play-by-play per completed gameId. CLI accepts individual gameIds or date-based discovery. Validated against GSW-LAC Play-In (401866756) and CHA-MIA Play-In (401866755). No workflow — run manually post-game for now.

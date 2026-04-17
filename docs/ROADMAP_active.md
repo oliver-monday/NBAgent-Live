@@ -2,9 +2,10 @@
 
 ## Phase 2 — ESPN ingest
 
-- PBP scraper per completed gameId → `data/pbp/{gameId}.jsonl`
-- ESPN WP timeseries scraper per completed gameId → `data/espn_wp/{gameId}.jsonl`
-- Multi-season backfill (2014-2023) — execute after 2024-25 pipeline validated
+- ~~PBP scraper per completed gameId → `data/pbp/{gameId}.jsonl`~~ ✓ Phase 2a
+- ~~ESPN WP timeseries scraper per completed gameId → `data/espn_wp/{gameId}.jsonl`~~ ✓ Phase 2a
+- 2025-26 season backfill — scrape all completed regular season + playoff games
+- Multi-season backfill (2014-2024) — execute after 2025-26 pipeline validated
 - Pre-game spread integration from external source
 
 ## Phase 3 — Analysis re-run on PBP foundation
