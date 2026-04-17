@@ -14,14 +14,6 @@ First verification of Phase 0+1 revealed the `discover_nba_game_markets` filter 
 
 Second Phase 1 verification pass revealed `snapshot_market` was reading legacy field names — every price / volume / OI field landed as null. Updated reads to current `*_dollars` / `*_fp` naming, kept raw string decimals (lossless; casting deferred to analysis), added `yes_bid_size_fp` / `yes_ask_size_fp` / `liquidity_dollars` / `open_time` / `updated_time`. Phase 1 remains *implemented but unverified in production* — the 4/17 Play-In slate (GSW-PHX, CHA-ORL) will be the first real shakedown.
 
-## 2026-04-17 — Phase 2a: ESPN WP + PBP scraper
-
-Implemented `scrapers/espn_scraper.py` — batch scraper for ESPN's game summary endpoint. Extracts win probability timeseries and play-by-play per completed gameId. CLI accepts individual gameIds or date-based discovery. Validated against GSW-LAC Play-In (401866756) and CHA-MIA Play-In (401866755). No workflow — run manually post-game for now.
-
-## 2026-04-17 — Phase 2b: ESPN backfill utility + spread integration
-
-Built `scrapers/espn_backfill.py` — season-wide backfill utility that reads game IDs from `data/nba_master_2025_26.csv` (inherited from NBAgent project) and scrapes ESPN WP + PBP for each completed game. Supports date range, team, and spread-based filtering. Idempotent (skips existing files). Added ESPN team abbreviation normalization to `espn_scraper.py` — maps non-standard ESPN abbreviations (GS, SA, NY, etc.) to standard NBA set at parse time. Pre-game spreads from the CSV retire the "pre-game spread integration" roadmap item. Verified on 3-day window; full 2025-26 backfill (~1,230 games, ~25 min runtime) ready to run manually.
-
 ## 2026-04-17 — Phase 1: First confirmed production run
 
 Kalshi logger's first confirmed production run verified. Morning
