@@ -259,7 +259,14 @@ def write_snapshot(date_str: str, snapshot: Dict[str, Any]) -> None:
 
 
 def git_commit_push() -> None:
-    """Commit and push new data. Uses GitHub Actions bot identity."""
+    """Commit and push new data. Uses GitHub Actions bot identity.
+
+    Rebases on origin/main before each push attempt to avoid
+    non-fast-forward rejections when other actors (developer commits,
+    Claude Code, other workflows) land on main during this run. Retries
+    the pull-rebase-push cycle up to 2 times; if all attempts fail,
+    snapshots remain committed locally and the next cycle will retry.
+    """
     try:
         subprocess.run(
             ["git", "config", "user.name", "github-actions[bot]"],
@@ -283,13 +290,28 @@ def git_commit_push() -> None:
             ["git", "commit", "-m", f"[skip ci] Kalshi snapshots {ts}"],
             check=False, capture_output=True,
         )
-        push = subprocess.run(
-            ["git", "push"], check=False, capture_output=True, text=True,
-        )
-        if push.returncode == 0:
-            log("commit: pushed")
-        else:
-            log(f"commit: push failed — {push.stderr.strip()}")
+        # Pull-rebase then push, with one retry. --autostash protects
+        # any uncommitted files (there shouldn't be any after the commit
+        # above, but it's a safe no-op when the working tree is clean).
+        for attempt in range(1, 3):
+            pull = subprocess.run(
+                ["git", "pull", "--rebase", "--autostash", "origin", "main"],
+                check=False, capture_output=True, text=True,
+            )
+            if pull.returncode != 0:
+                tail = (pull.stderr.strip().splitlines() or ["(no stderr)"])[-1]
+                log(f"commit: pull --rebase failed (attempt {attempt}) — {tail}")
+                continue
+            push = subprocess.run(
+                ["git", "push"], check=False, capture_output=True, text=True,
+            )
+            if push.returncode == 0:
+                log("commit: pushed")
+                return
+            tail = (push.stderr.strip().splitlines() or ["(no stderr)"])[-1]
+            log(f"commit: push failed (attempt {attempt}) — {tail}")
+        log("commit: push failed after 2 attempts; "
+            "snapshots committed locally, will retry next cycle")
     except Exception as e:
         log(f"commit: error — {e}")
 
