@@ -282,8 +282,9 @@ Candidates for promotion into `docs/THESIS_open_questions.md`
 A fresh session picks up from Phase O1. Recommended starting
 dispatch shape:
 
-1. Re-read this doc, `docs/CLAUDE.md`, `logger/kalshi_logger.py`,
-   and `scrapers/espn_scraper.py` for conventions.
+1. Re-read this doc, `CLAUDE.md` (repo root),
+   `logger/kalshi_logger.py`, and `scrapers/espn_scraper.py` for
+   conventions.
 2. Build `scrapers/odds_api_live.py` matching the Kalshi logger
    pattern (long-lived, idempotent, periodic commit,
    self-terminating on idle).
