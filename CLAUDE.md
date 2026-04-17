@@ -152,3 +152,5 @@ memory as starting from the first session's context.
   been validated yet.
 - `docs/ROADMAP_active.md` — next phases.
 - `docs/ROADMAP_resolved.md` — historical record of completed phases.
+- `docs/ODDS_API_INTEGRATION.md` — planning doc for Odds API
+  integration (Phase O).
