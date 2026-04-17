@@ -2,23 +2,35 @@
 
 ## Phase 2 — ESPN ingest
 
-- ~~PBP scraper per completed gameId → `data/pbp/{gameId}.jsonl`~~ ✓ Phase 2a
-- ~~ESPN WP timeseries scraper per completed gameId → `data/espn_wp/{gameId}.jsonl`~~ ✓ Phase 2a
-- ~~2025-26 season backfill utility~~ ✓ Phase 2b (utility built; full run pending)
-- ~~Pre-game spread integration~~ ✓ Inherited from NBAgent via `nba_master_2025_26.csv`
-- Full 2025-26 backfill execution — run `espn_backfill.py`, commit data
-- Multi-season backfill (2014-2024) — execute after 2025-26 analysis validates approach
+- Multi-season backfill (2014-2024) — execute after current-season
+  analysis pipeline validates end-to-end and Phase 3B produces
+  first paired findings. Low urgency.
 
-## Phase 3 — Analysis re-run on PBP foundation
+## Phase 3 — Analysis on ESPN WP foundation
 
-- Replicate bilateral dip analysis on PBP granularity (sanity check vs minute-level)
-- Add pre-game spread filter for ex-ante competitive universe
-- Fit empirical WP model (logistic: margin × time_remaining × spread) — check if Stern residual survives
+- **Phase 3B** — paired Kalshi + ESPN analysis. Blocked on
+  ≥5-10 games of live Kalshi data accumulation during 2026
+  playoffs. Covers §1.1 Kalshi-vs-ESPN residual, §2.1 liquidity
+  characterization, §2.5 realized spread distribution, §6.5 MM
+  behavior at extremes, §6.6 flow isolation (Kalshi-only lens
+  — Odds API provides a cleaner test of the same question in
+  Phase O3).
+- **§1.4 retirement analyses** — three spread-anchoring tests
+  runnable from existing ESPN data, no Kalshi dependency. See
+  `docs/THESIS_open_questions.md` §1.4. Potentially restructures
+  Strategy 2's entry rule (spread-conditional residual) and
+  Strategy 3's exit target (opening line vs 50/50).
+- **Empirical WP model** — fit logistic on (margin,
+  time_remaining, spread). Test whether the ESPN +3pp residual
+  survives a properly fitted empirical model or is an artifact
+  of ESPN's specific modeling choices. Lower priority than 3B
+  and §1.4.
 
 ## Phase 4 — Live decision engine (speculative)
 
-- Do not design until Phase 3 produces validated strategy spec
-- Will read live Kalshi + live PBP, generate signals, alert for manual paper-trading first
+- Do not design until Phase 3B produces a validated strategy spec.
+- Will read live Kalshi + live PBP, generate signals, alert for
+  manual paper-trading first.
 
 ## Phase O — Odds API integration (parallel track)
 

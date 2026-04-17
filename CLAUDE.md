@@ -19,15 +19,28 @@ The split exists because:
 ## Current phase: research
 
 We are in research phase. **Do not build agent/frontend infrastructure
-until research produces a validated strategy spec.** The near-term job is:
+until research produces a validated strategy spec.** Progress:
 
-1. Capture live Kalshi orderbook data forward (Phase 1 — done).
-2. Ingest ESPN PBP + WP for historical grounding (Phase 2).
-3. Re-run the bilateral dip analysis on PBP foundation with Kalshi
-   price data overlaid (Phase 3).
-4. Only then consider a live decision engine (Phase 4).
+1. **Phase 1** — Live Kalshi orderbook capture. Implemented, first
+   confirmed production run 2026-04-17.
+2. **Phase 2** — ESPN PBP + WP historical grounding. Complete for
+   2025-26 regular season (1,234 / 1,243 games usable). Multi-season
+   backfill (2014-2024) still open but low priority.
+3. **Phase 3** — Analysis. Phase 3A done on ESPN-only data
+   (bilateral dip + at-moment calibration, ESPN residual +3pp).
+   Phase 3B pending — paired Kalshi+ESPN analysis, blocked on
+   ≥5-10 games of live Kalshi data during 2026 playoffs. §1.4
+   spread-anchoring analyses are runnable from existing ESPN data
+   and may run in parallel.
+4. **Phase 4** — Live decision engine. Not scoped until 3B
+   validates a strategy spec.
 
-See `docs/ROADMAP_active.md`.
+**Parallel track — Phase O:** Odds API integration planned (see
+`docs/ODDS_API_INTEGRATION.md`). Implementation queued for a
+fresh session. Adds US sportsbook pricing as a consensus benchmark
+independent of ESPN.
+
+See `docs/ROADMAP_active.md` for current open items.
 
 ## User profile
 
@@ -52,13 +65,25 @@ See `docs/ROADMAP_active.md`.
 ## Repo structure
 
 ```
-logger/kalshi_logger.py     Long-lived polling process
-logger/__init__.py          Package marker
-data/orderbook_snapshots/   One JSONL file per UTC date, appended by logger
-docs/RESEARCH_LOG.md        Chronological findings — append, don't rewrite
-docs/ROADMAP_active.md      What's open
-docs/ROADMAP_resolved.md    What's done
-.github/workflows/          Scheduled logger invocations
+logger/                     Long-lived Kalshi polling process
+scrapers/                   ESPN scraper + future data source scrapers
+analysis/                   Analysis scripts (phase_3a_followup.py, etc.)
+data/
+  orderbook_snapshots/      Kalshi snapshots — committed, irreplaceable
+  pbp/                      ESPN PBP — gitignored, regenerable (~35m)
+  espn_wp/                  ESPN WP timeseries — gitignored, regenerable
+  nba_master_2025_26.csv    Game index with pre-game spreads (committed)
+docs/
+  THESIS.md                 Long-term project thesis and framing
+  THESIS_open_questions.md  Open questions companion doc
+  RESEARCH_LOG.md           Chronological findings — append, don't rewrite
+  ROADMAP_active.md         What's open
+  ROADMAP_resolved.md       What's done
+  FEES.md                   Kalshi fee envelope analysis
+  KILL_CRITERIA_draft.md    Strategy graduation / kill thresholds
+  ODDS_API_INTEGRATION.md   Phase O planning doc
+  analysis_outputs/         Generated analysis reports (committed)
+.github/workflows/          Scheduled jobs
 ```
 
 ## Workflow layout

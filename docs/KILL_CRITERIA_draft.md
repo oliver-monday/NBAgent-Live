@@ -14,8 +14,8 @@ into `THESIS.md` under Success Criteria.
 All criteria are evaluated on **held-out Kalshi data** — games not
 used to develop or tune the strategy. Minimum sample: 50 competitive
 games with full Kalshi orderbook snapshots and matched ESPN WP data.
-"Competitive" = pre-game spread ≤ 6 points (once spread integration
-exists; until then, use final margin ≤ 15 as a noisy proxy).
+"Competitive" = pre-game spread ≤ 6 points, using the pre-game
+spread from `data/nba_master_2025_26.csv` (integrated 2026-04-17).
 
 "Opportunity" means: Kalshi bid price crossed the threshold AND
 top-of-book resting size at that price ≥ the minimum fill size at
