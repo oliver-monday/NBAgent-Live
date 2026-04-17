@@ -52,6 +52,23 @@ WP_DIR = Path("data/espn_wp")
 PBP_DIR = Path("data/pbp")
 
 
+# ESPN uses non-standard team abbreviations. Normalize to the
+# standard NBA set (matching nba_master_2025_26.csv and most
+# other data sources) at parse time so downstream consumers
+# never see the ESPN variants.
+_ABBR_NORM = {
+    "GS": "GSW", "SA": "SAS", "NO": "NOP",
+    "NY": "NYK", "UTAH": "UTA", "WSH": "WAS",
+    "PHO": "PHX",
+}
+
+
+def _norm_team(abbr: str) -> str:
+    """Normalize ESPN team abbreviation to standard NBA abbreviation."""
+    a = str(abbr).upper().strip()
+    return _ABBR_NORM.get(a, a)
+
+
 # ---- Utilities ----------------------------------------------------------
 
 def log(msg: str) -> None:
@@ -113,8 +130,9 @@ def scrape_game(game_id: str) -> Optional[Dict[str, Any]]:
             teams = []
             for competitor in comp.get("competitors", []):
                 team_info = competitor.get("team", {})
+                raw_abbr = team_info.get("abbreviation")
                 teams.append({
-                    "abbreviation": team_info.get("abbreviation"),
+                    "abbreviation": _norm_team(raw_abbr) if raw_abbr else raw_abbr,
                     "display_name": team_info.get("displayName"),
                     "team_id": team_info.get("id"),
                     "score": competitor.get("score"),
