@@ -560,3 +560,126 @@ smooth the curve but wouldn't change the directional finding.
 
 All prior entries stand. This entry recalibrates Strategy 1
 using the sportsbook backfill finding.
+
+## 2026-04-19 — Strategy 3 oscillation analysis: HOU-LAL deep dive (n=1)
+
+**Data:** HOU-LAL 2026-04-18 Kalshi orderbook snapshots (30s
+cadence, 277 snapshots per side over the 138-min live window
+00:48 → 03:06 UTC 4/19). First oscillation characterization on
+actual Kalshi data for Strategy 3 scoping.
+
+### Swing activity
+
+Detected via `scipy.signal.find_peaks` with prominence filtering
+(robust to the many tick-identical plateaus at $0.01 bid/ask
+granularity):
+
+- **41 swings ≥ $0.02** total (22 HOU + 19 LAL).
+- **10 swings ≥ $0.10** magnitude. Median magnitude of these
+  larger swings: $0.200. Max: $0.230 (HOU final drop).
+- Duration: median 8-10 min per swing; longest $0.20 swing ran
+  26 min (01:42 → 02:08 UTC — HOU comeback from $0.325 to
+  $0.525 while LAL fell $0.675 → $0.475).
+
+Raw oscillation magnitude looks promising — 10 ≥$0.10 swings
+in one 138-min game is plenty of raw material for a
+swing-trading rule.
+
+### Round-trip round-trips at entry ≤$0.30
+
+**Zero complete round-trips** across all 12 entry × exit
+threshold pairs tested (entries $0.15/$0.20/$0.25/$0.30 × exits
++$0.10/+$0.15/+$0.20). Reasons:
+
+- HOU dipped below $0.30 only late (after 02:20 UTC) and never
+  rebounded above $0.40 before settling at $0.005.
+- LAL's live-window minimum mid was $0.405 — never entered the
+  tested threshold range.
+
+The HOU $0.17-$0.20 comeback (01:42 → 02:08) is a textbook
+swing-trading opportunity — but it originated from a HOU mid of
+$0.325, above the tested entry ceiling of $0.30. Follow-up
+analysis should include wider entry thresholds
+(e.g., up to $0.45) or a "buy the dip regardless of side"
+asymmetric rule to capture symmetric swings.
+
+### Spreads at Strategy 3 entry zones
+
+| Bucket | n | Median spread | Mean spread / mid |
+|--------|---|---------------|-------------------|
+| ≤ $0.10 | 31 | $0.0100 | 29.4% |
+| (0.15, 0.20] | 17 | $0.0100 | 5.7% |
+| (0.20, 0.25] | 19 | $0.0100 | 4.9% |
+| (0.25, 0.30] | 19 | $0.0100 | 4.0% |
+
+Spread is tick-wide ($0.01) almost everywhere — max observed
+$0.02 (two ticks). As a percentage of mid, the (0.15, 0.30]
+zone sits at 4-6% — manageable for Strategy 3 economics. The
+≤$0.10 zone is 29% spread-to-mid — too expensive to round-trip.
+
+### Book depth at entry zones
+
+Variable. `yes_bid_size_fp` ≥ 50,000 (kill-criteria fill-size
+threshold) in:
+- 77% of snapshots at mid ≤ $0.10
+- 59% at (0.15, 0.20]
+- 16% at (0.20, 0.25]  ⚠
+- 37% at (0.25, 0.30]  ⚠
+
+Only the extreme-low-price zone has reliably ≥50k depth. The
+Strategy 3 entry zone around (0.20, 0.25] shows depth ≥50k in
+only 16% of snapshots — meaningful depth concern worth watching
+across more games.
+
+### Viability scorecard (n=1, not statistically meaningful)
+
+| Criterion | Threshold | Observed | Status |
+|---|---|---|---|
+| Round-trip frequency | ≥ 8% competitive games | n/a (n=1) | — |
+| Swing magnitude (median ≥$0.10) | ≥ $0.10 capture | $0.200 | ✓ Pass |
+| Realized spread at entry (median) | < $0.03 | $0.0100 | ✓ Pass |
+| Book depth ≥ 50k (% at mid ≤$0.30) | ≥ 50% | 50% | ≈ Borderline |
+| Hold time (median) | ≥ 90 seconds | no complete trips | — |
+
+### Implications for Strategy 3
+
+- **Oscillation activity is real.** 10 meaningful swings in 138
+  min of live play validates the premise that Kalshi prices
+  oscillate enough to swing-trade in principle.
+- **Game shape matters.** HOU-LAL was a one-way-ish game (LAL
+  won by 9, HOU's only meaningful comeback put it back to 52%
+  but never above). Buy-deep-underdog-and-wait patterns produced
+  zero fills. Need competitive back-and-forth games for the
+  pattern to work.
+- **Entry-threshold scope reconsideration.** The $0.15-$0.30
+  entry range caught none of the actual game swings. The $0.17
+  HOU comeback from $0.325 suggests threshold ceiling should
+  probably rise to ~$0.45, OR the strategy should be
+  reformulated as "buy the side that just dipped at least $0.10
+  regardless of absolute price level."
+- **Spread economics are manageable** in the middle-price zones
+  ($0.15-$0.30). Depth is the larger unknown — 16% of (0.20,
+  0.25] snapshots had <50k resting size.
+- **n=1 is emphatically not enough.** Extend this analysis to
+  the CHA-ORL / GSW-PHX 4/17 Play-Ins and to a handful of
+  competitive regular-season games (once per-event-file logger
+  data accumulates) before any Strategy 3 design decision.
+
+### Methodology notes for future Strategy 3 analyses
+
+- Tip-detection via volume rate failed twice on this n=1 case
+  (pre-tip flow spikes produce false positives; logger gap
+  boundaries produce edge artifacts). Script anchors on ESPN-
+  verified tip time instead. Multi-game version needs a more
+  robust detector — possibly "first sustained 10-min window
+  with ≥200 fp/sec AND mid variance ≥ 0.005," or a simple
+  ESPN-PBP-wallclock match.
+- Swing detection initially used strict-inequality local
+  extrema; failed on tick-granularity plateaus. Switched to
+  `scipy.signal.find_peaks` with prominence filtering — works
+  cleanly.
+
+### Does not supersede
+
+All prior entries stand. This is the first Strategy 3-specific
+analysis.
