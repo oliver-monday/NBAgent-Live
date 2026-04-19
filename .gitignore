@@ -11,3 +11,6 @@ venv/
 # ESPN scraped data (regenerable via espn_backfill.py)
 data/espn_wp/*.jsonl
 data/pbp/*.jsonl
+
+# Kalshi orderbook snapshots (irreplaceable — backed up to personal cloud)
+data/orderbook_snapshots/
