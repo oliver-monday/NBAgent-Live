@@ -1,14 +1,20 @@
 """
 Kalshi logger health check — quick terminal diagnostic.
 
-Reads the tail of the newest orderbook_snapshots/*.jsonl file and
-reports cadence, active tickers, complement sanity, and staleness.
-No external dependencies beyond the standard library + pandas.
+Reads the tails of recently-modified orderbook_snapshots/*.jsonl
+files and reports cadence, active tickers, complement sanity, and
+staleness. No external dependencies beyond the standard library.
 
 Usage:
     python -m analysis.logger_health_check
 
 Exit code 0 on healthy, 1 on any warning.
+
+Since the logger writes per-event files (one per Kalshi event_ticker),
+during live capture there will be multiple active files simultaneously
+(2-12 games tracked at once during playoff runs). This script scans
+by mtime and aggregates the tails of the N most recently modified
+files so you see the full active picture, not just one event.
 """
 
 from __future__ import annotations
@@ -22,7 +28,8 @@ from pathlib import Path
 from statistics import median
 
 SNAP_DIR = Path("data/orderbook_snapshots")
-TAIL_LINES = 500           # how many lines to read from the end
+TAIL_LINES = 200           # lines to tail per file (100 snapshots per side)
+MAX_FILES = 30             # cap on files to inspect; takes the most recent
 RECENT_WINDOW_SEC = 300    # "last 5 minutes" for active-ticker report
 STALENESS_WARN_SEC = 120   # warn if newest snapshot older than this
 CADENCE_WARN_SEC = 90      # warn if any gap exceeds this
@@ -101,26 +108,32 @@ def fmt_size_fp(v: float) -> str:
 
 
 def main() -> int:
-    files = sorted(SNAP_DIR.glob("*.jsonl")) if SNAP_DIR.exists() else []
+    files = list(SNAP_DIR.glob("*.jsonl")) if SNAP_DIR.exists() else []
     if not files:
         print("No JSONL files found in data/orderbook_snapshots/.")
         return 1
 
-    latest = files[-1]
-    size_bytes = latest.stat().st_size
+    # Sort by mtime descending; take the most recently modified
+    # MAX_FILES so we see everything currently being written.
+    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    recent_files = files[:MAX_FILES]
+    newest_mtime = max(p.stat().st_mtime for p in recent_files)
+    total_bytes = sum(p.stat().st_size for p in recent_files)
 
     print("=== Kalshi Logger Health Check ===")
-    print(f"File: {latest}")
-    print(f"File size: {fmt_bytes(size_bytes)}")
+    print(f"Files scanned: {len(recent_files)} of {len(files)} total "
+          f"(most-recently-modified first)")
+    print(f"Combined size: {fmt_bytes(total_bytes)}")
+    print(f"Newest file: {recent_files[0].name}")
 
-    lines = tail_lines(latest, TAIL_LINES)
-    if not lines:
-        print("File is empty.")
-        return 1
-
-    snaps = parse_snapshots(lines)
+    snaps: list[dict] = []
+    for p in recent_files:
+        lines = tail_lines(p, TAIL_LINES)
+        if not lines:
+            continue
+        snaps.extend(parse_snapshots(lines))
     if not snaps:
-        print("No parseable snapshots in tail.")
+        print("No parseable snapshots across scanned files.")
         return 1
 
     now = datetime.now(timezone.utc)
@@ -203,7 +216,7 @@ def main() -> int:
     # ---- Session summary ----
     all_tss = [s["ts"] for s in snaps]
     all_tickers = {s["ticker"] for s in snaps}
-    print("\nSession summary (from tail of file):")
+    print("\nSession summary (from tails of scanned files):")
     print(f"  snapshots in tail: {len(snaps)}")
     print(f"  distinct tickers:  {len(all_tickers)}")
     if all_tss:

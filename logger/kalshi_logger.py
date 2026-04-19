@@ -3,8 +3,10 @@ Kalshi NBA orderbook logger.
 
 Long-lived polling process that runs during NBA game windows.
 Auto-discovers today's NBA game markets on Kalshi and captures orderbook
-snapshots every POLL_INTERVAL_SEC. Appends JSONL to data/orderbook_snapshots/{date}.jsonl.
-Commits periodically so data persists across runs and workflow restarts.
+snapshots every POLL_INTERVAL_SEC. Appends JSONL to
+data/orderbook_snapshots/{event_ticker}.jsonl — one file per Kalshi
+per-game event (both sides of the market share the file). Commits
+periodically so data persists across runs and workflow restarts.
 
 Market data endpoints on Kalshi are unauthenticated (docs.kalshi.com).
 No API key required.
@@ -251,9 +253,21 @@ def snapshot_market(market_ticker: str, discovery_meta: Dict[str, Any]) -> Optio
 
 # ---- Persistence --------------------------------------------------------
 
-def write_snapshot(date_str: str, snapshot: Dict[str, Any]) -> None:
+def write_snapshot(snapshot: Dict[str, Any]) -> None:
+    """Append one snapshot to its per-event JSONL file.
+
+    Files are named by the market's event_ticker so both sides of a
+    game (home + away) land in the same file; analysis groups by the
+    `ticker` field inside each row. Fallback to the individual ticker
+    if event_ticker is missing (defensive — should not happen in
+    normal operation)."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    path = DATA_DIR / f"{date_str}.jsonl"
+    event_ticker = (
+        snapshot.get("event_ticker")
+        or snapshot.get("ticker")
+        or "unknown"
+    )
+    path = DATA_DIR / f"{event_ticker}.jsonl"
     with open(path, "a") as f:
         f.write(json.dumps(snapshot) + "\n")
 
@@ -334,7 +348,6 @@ def main() -> int:
     start = time.time()
     last_commit = start
     idle_since: Optional[float] = None
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     while time.time() - start < MAX_RUN_SEC:
         cycle_start = time.time()
@@ -359,7 +372,7 @@ def main() -> int:
                     continue
                 snap = snapshot_market(ticker, m)
                 if snap is not None:
-                    write_snapshot(date_str, snap)
+                    write_snapshot(snap)
 
         # Periodic commit
         if time.time() - last_commit >= COMMIT_INTERVAL_SEC:
