@@ -55,9 +55,15 @@ SETTLED_HI = 0.98
 SWING_MIN_MAG = 0.02
 SMOOTH_WINDOW = 3
 
-# Round-trip grid
+# Round-trip grids
+# Section 3: extreme-price entries (original Strategy 1/2-style thinking)
 ENTRY_THRESHOLDS = [0.15, 0.20, 0.25, 0.30]
 EXIT_DELTAS = [0.10, 0.15, 0.20]
+
+# Section 3B: mid-range entries (where HOU-LAL swings actually live).
+# Entry $0.30-$0.45, exit +$0.10 or +$0.15 → 8 pairs.
+MID_ENTRY_THRESHOLDS = [0.30, 0.35, 0.40, 0.45]
+MID_EXIT_DELTAS = [0.10, 0.15]
 
 # Strategy 3 entry-zone buckets (for spread + depth analysis)
 ENTRY_BUCKETS = [
@@ -300,6 +306,171 @@ def score_round_trip(trip: dict, contracts: int = 100) -> dict:
     }
 
 
+def compute_mae(trip: dict, side: pd.DataFrame) -> dict:
+    """Compute maximum adverse excursion for a long position: the
+    worst (lowest) mid observed between entry_ts and exit_ts.
+
+    For long YES positions, "adverse" = price dropping below entry.
+    Records mae_price, mae_drawdown (entry − mae_price), mae_drawdown_pct
+    (drawdown / entry_price), mae_time, and time_to_mae_sec.
+
+    Incomplete trips: the terminal (exit_price) is itself adverse since
+    the position was held to game end — MAE still reflects the worst
+    observed mid in the window.
+    """
+    entry_ts = pd.Timestamp(trip["entry_ts"])
+    exit_ts = pd.Timestamp(trip["exit_ts"])
+    # Normalize timezone: find_round_trips returns numpy datetime64
+    # (tz-naive) via .values; side["ts"] is tz-aware UTC. Make both UTC.
+    if entry_ts.tzinfo is None:
+        entry_ts = entry_ts.tz_localize("UTC")
+    if exit_ts.tzinfo is None:
+        exit_ts = exit_ts.tz_localize("UTC")
+    mask = (side["ts"] >= entry_ts) & (side["ts"] <= exit_ts)
+    window = side[mask]
+    if window.empty:
+        return {
+            **trip,
+            "mae_price": trip["entry_price"],
+            "mae_drawdown": 0.0,
+            "mae_drawdown_pct": 0.0,
+            "mae_time": trip["entry_ts"],
+            "time_to_mae_sec": 0.0,
+        }
+    idx_min = window["mid"].idxmin()
+    mae_price = float(window.loc[idx_min, "mid"])
+    mae_ts = window.loc[idx_min, "ts"]
+    drawdown = max(trip["entry_price"] - mae_price, 0.0)
+    drawdown_pct = (
+        drawdown / trip["entry_price"] if trip["entry_price"] > 0 else 0.0
+    )
+    mae_ts_ts = pd.Timestamp(mae_ts)
+    if mae_ts_ts.tzinfo is None:
+        mae_ts_ts = mae_ts_ts.tz_localize("UTC")
+    time_to_mae = float((mae_ts_ts - entry_ts).total_seconds())
+    return {
+        **trip,
+        "mae_price": mae_price,
+        "mae_drawdown": drawdown,
+        "mae_drawdown_pct": drawdown_pct,
+        "mae_time": mae_ts,
+        "time_to_mae_sec": time_to_mae,
+    }
+
+
+def scan_grid(
+    live_sides: dict[str, pd.DataFrame],
+    entry_thresholds: list[float],
+    exit_deltas: list[float],
+    contracts: int = 100,
+) -> dict[tuple[float, float], list[dict]]:
+    """Apply find_round_trips × score_round_trip × compute_mae across
+    a grid of (entry, exit) thresholds and both sides."""
+    result: dict[tuple[float, float], list[dict]] = {}
+    for entry in entry_thresholds:
+        for delta in exit_deltas:
+            exit_thr = entry + delta
+            trips_both: list[dict] = []
+            for t, side in live_sides.items():
+                trips = find_round_trips(side, entry, exit_thr)
+                for tr in trips:
+                    tr["side"] = t
+                    scored = score_round_trip(tr, contracts=contracts)
+                    scored = compute_mae(scored, side)
+                    trips_both.append(scored)
+            result[(entry, exit_thr)] = trips_both
+    return result
+
+
+def render_trip_summary(
+    rep: "Report", pairs: dict[tuple[float, float], list[dict]],
+    header: str = "Summary",
+) -> None:
+    """Render the per-(entry,exit) summary table."""
+    rep.md_only(f"### {header}\n")
+    rep.md_only(
+        "| Entry | Exit | Δ | N trips | Mean hold (min) | Mean gross | "
+        "Mean net (taker) | Mean net (maker) |\n"
+        "|-------|------|---|---------|-----------------|------------|"
+        "------------------|-------------------|"
+    )
+    for (entry, exit_thr), trips in pairs.items():
+        complete = [tr for tr in trips if not tr["incomplete"]]
+        delta = exit_thr - entry
+        if complete:
+            mean_hold = np.mean([tr["hold_sec"] for tr in complete]) / 60
+            mean_gross = np.mean([tr["gross"] for tr in complete])
+            mean_net_tk = np.mean([tr["net_taker"] for tr in complete])
+            mean_net_mk = np.mean([tr["net_maker"] for tr in complete])
+            cells = (
+                f"| {entry:.2f} | {exit_thr:.2f} | +{delta:.2f} | "
+                f"{len(complete)} | {mean_hold:.1f} | ${mean_gross:.2f} | "
+                f"${mean_net_tk:.2f} | ${mean_net_mk:.2f} |"
+            )
+        else:
+            cells = (
+                f"| {entry:.2f} | {exit_thr:.2f} | +{delta:.2f} | "
+                f"0 | — | — | — | — |"
+            )
+        rep.md_only(cells)
+
+
+def render_trip_detail(
+    rep: "Report", trips: list[dict], header: str,
+) -> None:
+    """Render the detailed round-trip table for a single (entry, exit)
+    pair. Includes MAE columns."""
+    rep.md_only(f"\n### {header}\n")
+    if not trips:
+        rep.md_only("No round-trips at this pair.")
+        return
+    rep.md_only(
+        "| side | entry ts | entry | exit ts | exit | hold (min) | "
+        "gross | taker fees | net (taker) | net (maker) | "
+        "MAE price | MAE drawdown | incomplete |\n"
+        "|------|----------|-------|---------|------|------------|"
+        "-------|------------|-------------|-------------|"
+        "-----------|--------------|------------|"
+    )
+    trips_sorted = sorted(trips, key=lambda tr: tr["entry_ts"])
+    for tr in trips_sorted:
+        mae_price = tr.get("mae_price", tr["entry_price"])
+        mae_dd = tr.get("mae_drawdown", 0.0)
+        mae_pct = tr.get("mae_drawdown_pct", 0.0) * 100
+        rep.md_only(
+            f"| {tr['side']} | "
+            f"{pd.Timestamp(tr['entry_ts']).strftime('%H:%M:%S')} | "
+            f"{tr['entry_price']:.3f} | "
+            f"{pd.Timestamp(tr['exit_ts']).strftime('%H:%M:%S')} | "
+            f"{tr['exit_price']:.3f} | "
+            f"{tr['hold_sec']/60:.1f} | "
+            f"${tr['gross']:.2f} | ${tr['taker_fees']:.2f} | "
+            f"${tr['net_taker']:.2f} | ${tr['net_maker']:.2f} | "
+            f"{mae_price:.3f} | ${mae_dd:.3f} ({mae_pct:.0f}%) | "
+            f"{'yes' if tr['incomplete'] else 'no'} |"
+        )
+
+
+def pick_detail_pair(
+    pairs: dict[tuple[float, float], list[dict]]
+) -> tuple[float, float] | None:
+    """Pick the (entry, exit) pair with the most complete trips.
+    Ties broken by highest entry threshold. Returns None if all
+    pairs have zero completes."""
+    best_key = None
+    best_count = -1
+    best_entry = -1.0
+    for key, trips in pairs.items():
+        complete = [tr for tr in trips if not tr["incomplete"]]
+        if len(complete) > best_count or (
+            len(complete) == best_count and key[0] > best_entry
+        ):
+            best_count = len(complete)
+            best_key = key
+            best_entry = key[0]
+    return best_key if best_count > 0 else None
+
+
 # ---- Report builder -----------------------------------------------------
 
 class Report:
@@ -516,89 +687,134 @@ def main() -> int:
 
     print(f"  Pooled ≥$0.10 swings: {len(big)}")
 
-    # ---- Section 3: Round-trip opportunities ----
-    print("\n=== Section 3: Round-trip opportunities ===")
-    rep.md_only("\n## 3. Round-trip opportunity identification\n")
+    # ---- Section 3: Round-trip opportunities (extreme-price grid) ----
+    print("\n=== Section 3: Round-trip opportunities (extreme grid) ===")
+    rep.md_only("\n## 3. Round-trip opportunity identification — extreme grid\n")
     rep.md_only(
         "Greedy scan: enter when mid ≤ entry threshold, exit on first "
         "subsequent mid ≥ exit threshold, then resume scanning. Incomplete "
         "trips (still in position at game end) reported but excluded from "
-        "summary statistics.\n"
+        "summary statistics.\n\n"
+        "This grid uses extreme-price entries ($0.15–$0.30) inherited from "
+        "Strategy 1/2 thinking. The zero-result below was the motivation "
+        "for Section 3B's mid-range re-run.\n"
     )
-
-    # Summary table: combined both sides
-    rep.md_only(
-        "### Summary — all (entry, exit) pairs (both sides combined)\n\n"
-        "| Entry | Exit | Δ | N trips | Mean hold (min) | Mean gross | "
-        "Mean net (taker) | Mean net (maker) |\n"
-        "|-------|------|---|---------|-----------------|------------|"
-        "------------------|-------------------|"
+    all_trips_by_pair = scan_grid(live_sides, ENTRY_THRESHOLDS, EXIT_DELTAS)
+    render_trip_summary(
+        rep, all_trips_by_pair,
+        header="Summary — extreme grid (both sides combined)",
     )
-    all_trips_by_pair: dict[tuple[float, float], list[dict]] = {}
-    for entry in ENTRY_THRESHOLDS:
-        for delta in EXIT_DELTAS:
-            exit_thr = entry + delta
-            key = (entry, exit_thr)
-            trips_both: list[dict] = []
-            for t, side in live_sides.items():
-                trips = find_round_trips(side, entry, exit_thr)
-                for tr in trips:
-                    tr["side"] = t
-                    trips_both.append(score_round_trip(tr))
-            all_trips_by_pair[key] = trips_both
-            complete = [tr for tr in trips_both if not tr["incomplete"]]
-            if complete:
-                mean_hold = np.mean([tr["hold_sec"] for tr in complete]) / 60
-                mean_gross = np.mean([tr["gross"] for tr in complete])
-                mean_net_tk = np.mean([tr["net_taker"] for tr in complete])
-                mean_net_mk = np.mean([tr["net_maker"] for tr in complete])
-                cells = (
-                    f"| {entry:.2f} | {exit_thr:.2f} | +{delta:.2f} | "
-                    f"{len(complete)} | {mean_hold:.1f} | "
-                    f"${mean_gross:.2f} | ${mean_net_tk:.2f} | "
-                    f"${mean_net_mk:.2f} |"
-                )
-            else:
-                cells = (
-                    f"| {entry:.2f} | {exit_thr:.2f} | +{delta:.2f} | "
-                    f"0 | — | — | — | — |"
-                )
-            rep.md_only(cells)
-
-    # Detailed table of all round-trips at the most-permissive pair
-    # (entry 0.30, exit 0.40 — likely highest count)
-    detail_key = (0.30, 0.40)
-    detail_trips = all_trips_by_pair.get(detail_key, [])
-    rep.md_only(
-        f"\n### All round-trips at ({detail_key[0]:.2f}, "
-        f"{detail_key[1]:.2f}) — most-permissive pair\n"
-    )
-    if detail_trips:
-        rep.md_only(
-            "| side | entry ts | entry | exit ts | exit | hold (min) | "
-            "gross | taker fees | net (taker) | net (maker) | incomplete |\n"
-            "|------|----------|-------|---------|------|------------|"
-            "-------|------------|-------------|-------------|------------|"
+    detail_key = pick_detail_pair(all_trips_by_pair)
+    if detail_key is not None:
+        render_trip_detail(
+            rep, all_trips_by_pair[detail_key],
+            header=(
+                f"All round-trips at ({detail_key[0]:.2f}, "
+                f"{detail_key[1]:.2f}) — highest-count pair"
+            ),
         )
-        detail_trips.sort(key=lambda tr: tr["entry_ts"])
-        for tr in detail_trips:
-            rep.md_only(
-                f"| {tr['side']} | "
-                f"{pd.Timestamp(tr['entry_ts']).strftime('%H:%M:%S')} | "
-                f"{tr['entry_price']:.3f} | "
-                f"{pd.Timestamp(tr['exit_ts']).strftime('%H:%M:%S')} | "
-                f"{tr['exit_price']:.3f} | "
-                f"{tr['hold_sec']/60:.1f} | "
-                f"${tr['gross']:.2f} | ${tr['taker_fees']:.2f} | "
-                f"${tr['net_taker']:.2f} | ${tr['net_maker']:.2f} | "
-                f"{'yes' if tr['incomplete'] else 'no'} |"
-            )
+    else:
+        rep.md_only(
+            "\n### No complete round-trips at any extreme-grid pair\n\n"
+            "HOU-LAL's swings all started from mid ≥ $0.325 and exits "
+            "required rebound above entry + $0.10. HOU never rebounded "
+            "above the exit threshold from any entry ≤ $0.30. This is "
+            "the finding that drove Section 3B's mid-range grid.\n"
+        )
 
-    # Print summary to stdout
+    # Print extreme-grid summary to stdout
     for key, trips in all_trips_by_pair.items():
         complete = [tr for tr in trips if not tr["incomplete"]]
         print(f"  Entry ${key[0]:.2f} → exit ${key[1]:.2f}: "
               f"{len(complete)} complete round-trip(s)")
+
+    # ---- Section 3B: Mid-range round-trip scan ----
+    print("\n=== Section 3B: Mid-range round-trip scan ===")
+    rep.md_only("\n## 3B. Round-trip opportunity identification — mid-range grid\n")
+    rep.md_only(
+        "Entry thresholds $0.30–$0.45, exit +$0.10 or +$0.15. Aligned "
+        "with where HOU-LAL's actual swings sit (see Section 2). The "
+        "interpretive question: do real oscillations in the competitive "
+        "mid-range produce executable round-trips at realistic Strategy 3 "
+        "entry prices?\n"
+    )
+    mid_trips_by_pair = scan_grid(
+        live_sides, MID_ENTRY_THRESHOLDS, MID_EXIT_DELTAS,
+    )
+    render_trip_summary(
+        rep, mid_trips_by_pair,
+        header="Summary — mid-range grid (both sides combined)",
+    )
+    mid_detail_key = pick_detail_pair(mid_trips_by_pair)
+    if mid_detail_key is not None:
+        render_trip_detail(
+            rep, mid_trips_by_pair[mid_detail_key],
+            header=(
+                f"All round-trips at ({mid_detail_key[0]:.2f}, "
+                f"{mid_detail_key[1]:.2f}) — highest-count pair"
+            ),
+        )
+    else:
+        rep.md_only(
+            "\n### No complete round-trips at any mid-range pair\n"
+        )
+
+    for key, trips in mid_trips_by_pair.items():
+        complete = [tr for tr in trips if not tr["incomplete"]]
+        print(f"  Entry ${key[0]:.2f} → exit ${key[1]:.2f}: "
+              f"{len(complete)} complete round-trip(s)")
+
+    # ---- Section 3C: Intra-position drawdown (MAE) ----
+    print("\n=== Section 3C: Intra-position drawdown (MAE) ===")
+    rep.md_only("\n## 3C. Intra-position drawdown (maximum adverse excursion)\n")
+    rep.md_only(
+        "For each completed round-trip (both Section 3 and 3B), we "
+        "scan the mid timeseries between entry and exit and record "
+        "the lowest observed mid. The drawdown from entry to that "
+        "low is the trader's maximum unrealized loss during the hold "
+        "— how much they had to stomach before the exit signal "
+        "fired. A trip that nets $15 but first drops $12 has a "
+        "materially different risk profile than one that monotonically "
+        "rose.\n"
+    )
+    # Pool all completed trips (exclude incomplete — they have no exit
+    # signal to reach, so MAE there is the terminal state rather than
+    # a realized drawdown during a bracketed hold)
+    all_complete: list[dict] = []
+    for trips in all_trips_by_pair.values():
+        all_complete.extend(tr for tr in trips if not tr["incomplete"])
+    for trips in mid_trips_by_pair.values():
+        all_complete.extend(tr for tr in trips if not tr["incomplete"])
+
+    if not all_complete:
+        rep.md_only("No completed round-trips across either grid — "
+                    "MAE pooled stats unavailable.")
+        print("  No completed round-trips; MAE stats unavailable.")
+    else:
+        dd = pd.Series([tr["mae_drawdown"] for tr in all_complete])
+        dd_pct = pd.Series([tr["mae_drawdown_pct"] for tr in all_complete])
+        tt = pd.Series([tr["time_to_mae_sec"] for tr in all_complete])
+        rep.md_only(
+            f"**N completed trips pooled (Sections 3 + 3B):** "
+            f"{len(all_complete)}\n"
+        )
+        rep.md_only(
+            "| Stat | Drawdown ($) | Drawdown (% of entry) | "
+            "Time to MAE (sec) |\n"
+            "|------|--------------|------------------------|"
+            "-------------------|\n"
+            f"| median | ${dd.median():.3f} | {dd_pct.median()*100:.1f}% | "
+            f"{tt.median():.0f} |\n"
+            f"| mean   | ${dd.mean():.3f} | {dd_pct.mean()*100:.1f}% | "
+            f"{tt.mean():.0f} |\n"
+            f"| max    | ${dd.max():.3f} | {dd_pct.max()*100:.1f}% | "
+            f"{tt.max():.0f} |"
+        )
+        print(f"  N completed trips: {len(all_complete)}")
+        print(f"  Median drawdown: ${dd.median():.3f} "
+              f"({dd_pct.median()*100:.1f}% of entry)")
+        print(f"  Max drawdown:    ${dd.max():.3f} "
+              f"({dd_pct.max()*100:.1f}% of entry)")
 
     # ---- Section 4: Spreads at entry zones ----
     print("\n=== Section 4: Spreads at entry zones ===")
@@ -711,6 +927,29 @@ def main() -> int:
             return "✓ Pass" if val < bar else "✗ Fail"
         return "?"
 
+    # Mid-range specific metrics for the expanded scorecard
+    mid_35_50_complete = [
+        tr for tr in mid_trips_by_pair.get((0.35, 0.50), [])
+        if not tr["incomplete"]
+    ]
+    mid_35_50_count = len(mid_35_50_complete)
+    # Mean maker-maker net across ALL completed mid-range trips (not
+    # just (0.35, 0.50)) — "mid-range round-trip net profit" is
+    # about whether the mid-range grid produces positive-EV trades
+    # on average at all.
+    all_mid_complete = [
+        tr for pair_trips in mid_trips_by_pair.values()
+        for tr in pair_trips if not tr["incomplete"]
+    ]
+    mean_net_maker_mid = (
+        np.mean([tr["net_maker"] for tr in all_mid_complete])
+        if all_mid_complete else None
+    )
+    median_mae_pct_all = (
+        median([tr["mae_drawdown_pct"] for tr in all_complete])
+        if all_complete else None
+    )
+
     rep.md_only(
         "| Criterion | Threshold | Observed (HOU-LAL) | Status |\n"
         "|-----------|-----------|--------------------|--------|\n"
@@ -727,7 +966,19 @@ def main() -> int:
         f"{_pass(pct_50k_at_entry, '>=', 50)} |\n"
         f"| Hold time (median at 0.25→0.35) | ≥ 90 seconds | "
         f"{(f'{median_hold_sec:.0f}s') if median_hold_sec else 'no complete trips'} | "
-        f"{_pass(median_hold_sec, '>=', 90)} |"
+        f"{_pass(median_hold_sec, '>=', 90)} |\n"
+        f"| Mid-range round-trips (0.35, 0.50) | "
+        f"≥ 1 per competitive game | "
+        f"{mid_35_50_count} complete | "
+        f"{_pass(float(mid_35_50_count), '>=', 1.0)} |\n"
+        f"| Mid-range round-trip net profit (maker-maker, pooled) | "
+        f"> $0 after fees | "
+        f"{('$' + f'{mean_net_maker_mid:.2f}') if mean_net_maker_mid is not None else 'n/a'} | "
+        f"{_pass(mean_net_maker_mid, '>=', 0.001) if mean_net_maker_mid is not None else 'Insufficient data'} |\n"
+        f"| Max adverse excursion (median of pooled completes) | "
+        f"< 50% of entry price | "
+        f"{(f'{median_mae_pct_all*100:.1f}% of entry') if median_mae_pct_all is not None else 'n/a'} | "
+        f"{_pass(median_mae_pct_all, '<', 0.50) if median_mae_pct_all is not None else 'Insufficient data'} |"
     )
 
     print("\nViability scorecard (observed vs threshold):")
@@ -739,6 +990,12 @@ def main() -> int:
           f"{f'{pct_50k_at_entry:.0f}%' if pct_50k_at_entry is not None else 'n/a'} of snapshots")
     print(f"  Median hold @(0.25, 0.35): "
           f"{f'{median_hold_sec:.0f}s' if median_hold_sec else 'n/a'}")
+    print(f"  Mid-range round-trips @(0.35, 0.50): "
+          f"{mid_35_50_count} complete")
+    print(f"  Mid-range net (maker, pooled): "
+          f"{f'${mean_net_maker_mid:.2f}' if mean_net_maker_mid is not None else 'n/a'}")
+    print(f"  MAE median: "
+          f"{f'{median_mae_pct_all*100:.1f}% of entry' if median_mae_pct_all is not None else 'n/a'}")
 
     # Write report
     rep.write(OUTPUT_MD)

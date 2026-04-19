@@ -52,11 +52,13 @@ Algorithm: 3-point rolling median → local extrema → merge consecutive same-t
 | HOU | down | 02:46:36 | 03:06:05 | 0.245 | 0.015 | $0.230 | 19.5 min |
 | LAL | up | 02:47:05 | 03:00:35 | 0.760 | 0.985 | $0.225 | 13.5 min |
 
-## 3. Round-trip opportunity identification
+## 3. Round-trip opportunity identification — extreme grid
 
 Greedy scan: enter when mid ≤ entry threshold, exit on first subsequent mid ≥ exit threshold, then resume scanning. Incomplete trips (still in position at game end) reported but excluded from summary statistics.
 
-### Summary — all (entry, exit) pairs (both sides combined)
+This grid uses extreme-price entries ($0.15–$0.30) inherited from Strategy 1/2 thinking. The zero-result below was the motivation for Section 3B's mid-range re-run.
+
+### Summary — extreme grid (both sides combined)
 
 | Entry | Exit | Δ | N trips | Mean hold (min) | Mean gross | Mean net (taker) | Mean net (maker) |
 |-------|------|---|---------|-----------------|------------|------------------|-------------------|
@@ -73,11 +75,46 @@ Greedy scan: enter when mid ≤ entry threshold, exit on first subsequent mid �
 | 0.30 | 0.45 | +0.15 | 0 | — | — | — | — |
 | 0.30 | 0.50 | +0.20 | 0 | — | — | — | — |
 
-### All round-trips at (0.30, 0.40) — most-permissive pair
+### No complete round-trips at any extreme-grid pair
 
-| side | entry ts | entry | exit ts | exit | hold (min) | gross | taker fees | net (taker) | net (maker) | incomplete |
-|------|----------|-------|---------|------|------------|-------|------------|-------------|-------------|------------|
-| HOU | 02:22:35 | 0.280 | 03:06:05 | 0.015 | 43.5 | $-26.50 | $1.53 | $-28.03 | $-26.89 | yes |
+HOU-LAL's swings all started from mid ≥ $0.325 and exits required rebound above entry + $0.10. HOU never rebounded above the exit threshold from any entry ≤ $0.30. This is the finding that drove Section 3B's mid-range grid.
+
+
+## 3B. Round-trip opportunity identification — mid-range grid
+
+Entry thresholds $0.30–$0.45, exit +$0.10 or +$0.15. Aligned with where HOU-LAL's actual swings sit (see Section 2). The interpretive question: do real oscillations in the competitive mid-range produce executable round-trips at realistic Strategy 3 entry prices?
+
+### Summary — mid-range grid (both sides combined)
+
+| Entry | Exit | Δ | N trips | Mean hold (min) | Mean gross | Mean net (taker) | Mean net (maker) |
+|-------|------|---|---------|-----------------|------------|------------------|-------------------|
+| 0.30 | 0.40 | +0.10 | 0 | — | — | — | — |
+| 0.30 | 0.45 | +0.15 | 0 | — | — | — | — |
+| 0.35 | 0.45 | +0.10 | 1 | 23.0 | $14.00 | $10.66 | $13.16 |
+| 0.35 | 0.50 | +0.15 | 1 | 41.0 | $18.00 | $14.66 | $17.16 |
+| 0.40 | 0.50 | +0.10 | 1 | 45.5 | $13.00 | $9.57 | $12.14 |
+| 0.40 | 0.55 | +0.15 | 0 | — | — | — | — |
+| 0.45 | 0.55 | +0.10 | 1 | 8.0 | $13.00 | $9.55 | $12.13 |
+| 0.45 | 0.60 | +0.15 | 1 | 34.0 | $19.00 | $15.62 | $18.15 |
+
+### All round-trips at (0.45, 0.55) — highest-count pair
+
+| side | entry ts | entry | exit ts | exit | hold (min) | gross | taker fees | net (taker) | net (maker) | MAE price | MAE drawdown | incomplete |
+|------|----------|-------|---------|------|------------|-------|------------|-------------|-------------|-----------|--------------|------------|
+| LAL | 00:48:06 | 0.425 | 00:56:05 | 0.555 | 8.0 | $13.00 | $3.45 | $9.55 | $12.13 | 0.405 | $0.020 (5%) | no |
+| HOU | 01:09:05 | 0.445 | 03:06:05 | 0.015 | 117.0 | $-43.00 | $1.84 | $-44.84 | $-43.47 | 0.015 | $0.430 (97%) | yes |
+
+## 3C. Intra-position drawdown (maximum adverse excursion)
+
+For each completed round-trip (both Section 3 and 3B), we scan the mid timeseries between entry and exit and record the lowest observed mid. The drawdown from entry to that low is the trader's maximum unrealized loss during the hold — how much they had to stomach before the exit signal fired. A trip that nets $15 but first drops $12 has a materially different risk profile than one that monotonically rose.
+
+**N completed trips pooled (Sections 3 + 3B):** 5
+
+| Stat | Drawdown ($) | Drawdown (% of entry) | Time to MAE (sec) |
+|------|--------------|------------------------|-------------------|
+| median | $0.040 | 11.6% | 870 |
+| mean   | $0.042 | 11.1% | 612 |
+| max    | $0.090 | 22.8% | 1139 |
 
 ## 4. Bid-ask spread at Strategy 3 entry price levels
 
@@ -114,3 +151,6 @@ Single-game observation only — n=1 is not statistically meaningful. This chara
 | Realized spread at entry (median, mid ≤ $0.30) | < $0.03 | $0.0100 | ✓ Pass |
 | Book depth at entry (% ≥ 50k at mid ≤ $0.30) | ≥ 50 contracts | 50% of snapshots ≥ 50k | ✓ Pass |
 | Hold time (median at 0.25→0.35) | ≥ 90 seconds | no complete trips | Insufficient data |
+| Mid-range round-trips (0.35, 0.50) | ≥ 1 per competitive game | 1 complete | ✓ Pass |
+| Mid-range round-trip net profit (maker-maker, pooled) | > $0 after fees | $14.55 | ✓ Pass |
+| Max adverse excursion (median of pooled completes) | < 50% of entry price | 11.6% of entry | ✓ Pass |

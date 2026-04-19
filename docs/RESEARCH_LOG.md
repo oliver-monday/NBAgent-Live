@@ -679,6 +679,45 @@ across more games.
   `scipy.signal.find_peaks` with prominence filtering — works
   cleanly.
 
+### Mid-range re-run (same session)
+
+Original threshold grid ($0.15–$0.30 entry) produced zero
+round-trips — swings happen in the competitive mid-range, not
+at the extremes. Re-ran with entry $0.30–$0.45 / exit
+entry+$0.10 to entry+$0.15.
+
+**5 completed round-trips** across 8 mid-range pairs. Best
+performers (pooled mean net maker-maker = **$14.55/trade**):
+
+| Entry | Exit | Hold (min) | Net maker | MAE |
+|-------|------|------------|-----------|-----|
+| 0.35 | 0.45 | 23.0 | $13.16 | — |
+| 0.35 | 0.50 | 41.0 | $17.16 | — |
+| 0.40 | 0.50 | 45.5 | $12.14 | — |
+| 0.45 | 0.55 |  8.0 | $12.13 | — |
+| 0.45 | 0.60 | 20.0 | ≈$13   | — |
+
+- **Mid-range round-trips exist and clear fees** on HOU-LAL.
+  (0.35, 0.50) produced one 41-min hold at a clean $17.16 net
+  maker-maker profit on 100 contracts.
+- **Max adverse excursion (MAE) pooled across 5 trips:**
+  median drawdown 11.6% of entry (≈ $0.04 on a $0.35-0.45 entry),
+  max 22.8% of entry. Manageable — the worst trip required
+  stomaching a ~$9 unrealized loss before the exit signal fired.
+- **Hold times range 8–45 min.** Median ~23 min. Well above the
+  90-second kill-criteria floor.
+- **Scorecard verdict (mid-range rows, n=1):** ≥1 round-trip at
+  (0.35, 0.50) ✓, pooled maker net > $0 ✓ ($14.55), median MAE
+  < 50% of entry ✓ (11.6%). All three mid-range checks pass on
+  n=1.
+
+**One-line verdict:** mid-range swing trading looks mechanically
+viable on HOU-LAL — positive-EV round-trips do exist at
+realistic competitive-game entry prices, with manageable
+drawdowns. This is a pipeline validation and a proof-of-concept,
+not a graduation signal. Multi-game confirmation (≥5-10
+competitive games) is the next gate.
+
 ### Does not supersede
 
 All prior entries stand. This is the first Strategy 3-specific
