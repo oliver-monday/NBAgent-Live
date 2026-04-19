@@ -10,7 +10,7 @@ Market data endpoints on Kalshi are unauthenticated (docs.kalshi.com).
 No API key required.
 
 Design:
-  - MAX_RUN_SEC caps each invocation well under GitHub Actions' 6-hour limit
+  - MAX_RUN_SEC caps each invocation (default 24h; override via env var)
   - IDLE_EXIT_SEC short-circuits when no active NBA markets are found
   - Fail-safe: any single request error is logged and skipped, never crashes the loop
 """
@@ -34,7 +34,7 @@ import requests
 KALSHI_BASE = "https://api.elections.kalshi.com/trade-api/v2"
 POLL_INTERVAL_SEC = int(os.environ.get("POLL_INTERVAL_SEC", "30"))
 COMMIT_INTERVAL_SEC = int(os.environ.get("COMMIT_INTERVAL_SEC", "300"))
-MAX_RUN_SEC = int(os.environ.get("MAX_RUN_SEC", str(5 * 3600 + 15 * 60)))  # 5h15m
+MAX_RUN_SEC = int(os.environ.get("MAX_RUN_SEC", str(24 * 3600)))  # 24h; override via env if needed
 IDLE_EXIT_SEC = int(os.environ.get("IDLE_EXIT_SEC", "900"))  # 15 min
 REQUEST_TIMEOUT_SEC = 10
 
