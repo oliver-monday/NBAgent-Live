@@ -66,6 +66,29 @@ reframing: the +3pp residual may mask spread-heterogeneous
 regimes, in which case Strategy 2's entry rule needs
 spread-conditional stratification rather than a pooled threshold.
 
+**Result (2026-04-19) — Denied as stated, reframed.** Phase 3B
+smoke test (n=4 usable games, 2,304 paired observations) and
+sportsbook backfill (57 dip moments, 341 fresh bookmaker
+quotes) show Kalshi is systematically +10-14pp above ESPN at
+low WP and −10-14pp below ESPN at high WP. Sportsbook consensus
+matches Kalshi, not ESPN. The correct claim is "Kalshi ≈
+sportsbook consensus" (supported), not "Kalshi ≈ ESPN"
+(denied). ESPN's WP model is more reactive to game state than
+any real-money market.
+
+**Implications for downstream claims:**
+- Strategy 2's +3pp ESPN residual does not transfer to Kalshi.
+  Sportsbooks/Kalshi price those moments at +10-17pp above
+  ESPN, well above actual win rates. Strategy 2 edge is
+  negative on real-money markets.
+- Strategy 1's bilateral rate needs sportsbook-calibrated
+  thresholds. Recalibrated optimal: (0.25, 0.35) at 17.7%
+  rate, EV $6.55/game — marginal but positive.
+- The pilot's "within ~1pp" observations (4/15 GSW-LAC at
+  72-74 and 114-115) were in the ~0.30-0.34 WP zone where
+  the compression residual happens to be small. Not
+  representative of the full WP range.
+
 ### 1.2 Pilot bilateral-dip frequencies are upper bounds
 
 **Claim in thesis:** "Pilot frequency (2024-25 data): ~30% of
@@ -205,6 +228,28 @@ cuts the other direction). §1.2 (pilot bilateral rates as upper
 bounds — mechanism now specified). Strategy 2 kill criteria
 (residual may need to be evaluated spread-conditionally).
 Strategy 3 exit-target rules.
+
+**Result (2026-04-19) — Direction reversed from hypothesis.**
+The thesis hypothesized ESPN was prior-anchored (spread-
+weighted). The sportsbook backfill shows the opposite: ESPN
+swings *harder* than real-money markets with game state.
+Kalshi and sportsbooks are the prior-anchored sources relative
+to ESPN. Both compress toward 0.50 (or toward the pre-game
+prior) compared to ESPN's more extreme model outputs.
+
+The three §1.4 retirement analyses (residual by spread bucket,
+score-tied regression, post-dip mean-reversion target) are
+still runnable from existing ESPN data and would quantify
+*ESPN's* anchoring behavior, but the strategy-relevant question
+(how does Kalshi behave?) is now answered directly by the
+sportsbook backfill: real-money markets compress relative to
+ESPN, and the compression is large (+10-17pp at the tails).
+
+**Status: partially retired.** The mechanism question (which
+source is more prior-anchored?) is answered. The three sub-
+analyses remain informative for understanding ESPN's model
+specifically but are no longer load-bearing for strategy
+decisions. Deprioritized.
 
 ---
 
@@ -843,3 +888,13 @@ relaxed thresholds. Methodology note: asymmetric-any-order is
 closer to the true operational rate than sequential. Strategy 1's
 graduation is substantially less suspect. See inline result line
 on §6.7.
+
+**2026-04-19 — Strategy 2 preliminary kill signal.** The
++3pp ESPN-vs-actual residual at the tails (Phase 3A) does not
+transfer to Kalshi/sportsbook pricing. Sportsbooks price
+those same moments at +10-17pp above ESPN — well above the
+~13% actual win rate. The relevant residual for Strategy 2
+(actual_win_rate − Kalshi_mid) is negative at every
+plausible calibration point. Formal kill pending Phase 3B
+confirmation with ≥10 games of Kalshi-vs-actual resolution
+data at the tails, but the direction is unambiguous.

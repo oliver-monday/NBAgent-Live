@@ -387,3 +387,176 @@ open pending the backfill fix.
 The 2026-04-17 Phase 3A entry stands. This entry adds follow-up
 findings and closes the three open items listed in that entry
 (pace, sequential, missing-games audit).
+
+## 2026-04-18 — Phase 3B smoke test: paired Kalshi-ESPN analysis (n=4 usable games)
+
+**Data:** 6 games matched (CHA-ORL, GSW-PHX from 4/17; TOR-CLE,
+MIN-DEN, ATL-NYK, HOU-LAL from 4/18). 4 produced usable paired
+data (MIN-DEN: logger not running; ATL-NYK: stale pricing, only
+46 obs at 0.995/0.005). 2,304 paired observations total via
+as-of merge (300s backward tolerance) of Kalshi snapshots against
+ESPN WP at matched wallclock timestamps.
+
+### Key finding: Kalshi-ESPN compression
+
+Kalshi is systematically less extreme than ESPN during live play.
+Residual (Kalshi mid − ESPN WP) correlates with distance from
+0.50: correlation = −0.463 at n=6 (−0.685 at n=2). Symmetric
+and monotonic.
+
+Stratified residual at n=4 usable games (pooled home + away):
+
+| ESPN WP bucket | n | mean Kalshi | residual (pp) |
+|----------------|---|-------------|---------------|
+| (0.075, 0.10] | 48 | 0.186 | +9.95 |
+| (0.10, 0.125] | 68 | 0.246 | +13.28 |
+| (0.125, 0.15] | 47 | 0.242 | +10.85 |
+| (0.15, 0.20] | 83 | 0.272 | +9.99 |
+| (0.20, 0.25] | 59 | 0.298 | +7.36 |
+| (0.25, 0.35] | 155 | 0.318 | +1.52 |
+| (0.35, 0.50] | 181 | 0.406 | −0.96 |
+| (0.75, 0.85] | 141 | 0.718 | −8.86 |
+| (0.85, 0.90] | 117 | 0.757 | −12.19 |
+
+Pattern moderated from n=2 (blowouts only) to n=4 (added one
+competitive game, HOU-LAL). Middle-range buckets (0.25-0.50)
+collapsed toward zero with competitive-game data. Tail compression
+(+10-13pp at low WP) persisted.
+
+### §2.1 liquidity first read
+
+At Kalshi mid ≤ 0.20: mean `yes_bid_size_fp` ranged from 85k
+(TOR-CLE) to 237k (HOU-LAL). Meaningful depth at Strategy 1/2
+entry prices — not the "thin book at extremes" scenario.
+
+### Pipeline validation
+
+Market complement check (home mid + away mid) within 1 tick
+(mean |dev| 0.002-0.004). Screenshot cross-check confirmed at
+CHA-ORL Q1 break: Kalshi CHA 17% vs ESPN CHA 8.6% (user
+screenshots matched to 0.5pp).
+
+### Implications
+
+- §1.1 (Kalshi ≈ ESPN): denied in-game at the tails, but the
+  pilot's "within ~1pp" observations happened to land in a
+  narrow bucket where the residual IS small (~0.50 WP zone).
+- The relevant question became: is Kalshi the outlier, or is
+  ESPN? → Answered by the sportsbook backfill (next entry).
+
+### Does not supersede
+
+The Phase 3A and 3A follow-up entries stand. This entry adds
+the first paired Kalshi-ESPN analysis.
+
+## 2026-04-19 — Sportsbook backfill: ESPN is the outlier, not Kalshi
+
+**Data:** 30 bilateral <0.20 games (|spread|≤6) from the Phase
+3A population of 146, stratified across season thirds and spread
+buckets. 57 dip observations (2 per game, minus 1 failure). Each
+observation: Odds API historical h2h at the exact wallclock
+timestamp of the ESPN WP minimum, no-vig normalized across 1-8
+US sportsbooks per snapshot. 341 fresh bookmaker quotes (67
+stale excluded). ~600 API credits consumed.
+
+### Key finding: sportsbooks match Kalshi, not ESPN
+
+| ESPN WP bucket at dip | n | mean ESPN | mean SB | residual (pp) |
+|----------------------|---|-----------|---------|---------------|
+| (0, 0.05] | 30 | 0.003 | 0.097 | +9.35 |
+| (0.05, 0.10] | 5 | 0.084 | 0.235 | +15.12 |
+| (0.10, 0.15] | 9 | 0.125 | 0.283 | +15.75 |
+| (0.15, 0.20] | 13 | 0.175 | 0.343 | +16.86 |
+
+Pooled mean residual: +12.58pp (median +11.53pp). Sportsbooks
+price the underdog +10-17pp above ESPN at the bilateral dip
+moments — matching the Kalshi compression pattern to within
+noise.
+
+### What this settles
+
+- **ESPN is the outlier.** Kalshi, FanDuel, DraftKings, BetMGM,
+  Caesars, and the rest all agree with each other. ESPN's WP
+  model swings harder with game state than every real-money
+  market.
+- **§1.1 reframed.** The correct claim is "Kalshi ≈ sportsbook
+  consensus" (supported), not "Kalshi ≈ ESPN" (denied). The
+  thesis's original framing was comparing against the wrong
+  benchmark.
+- **Strategy 2 is effectively dead.** The +3pp ESPN-vs-actual
+  residual that was Strategy 2's basis gets absorbed entirely
+  by the +10-17pp gap between ESPN and real-money markets.
+  Sportsbooks/Kalshi price these moments at ~20-34%, well
+  above the ~13% actual win rate. No positive residual to
+  exploit.
+- **Strategy 1 needs recalibration.** The 26.6% bilateral rate
+  was measured on ESPN WP. Real-money markets show those same
+  moments at substantially higher prices, meaning bilateral
+  <$0.20 on Kalshi is much rarer than ESPN suggested.
+
+### Cross-book consensus quality
+
+Mean cross-book std: 0.033 (3.3pp). Mean overround: 1.055.
+Sportsbooks agree tightly with each other at extreme game
+states — the consensus signal is clean.
+
+### Does not supersede
+
+The Phase 3B smoke test entry stands. This entry identifies
+which source is the outlier.
+
+## 2026-04-19 — Strategy 1 recalibrated bilateral analysis
+
+**Data:** Full 2025-26 ESPN dataset (1,234 games, 602,167 WP
+observations), transformed via the 57-point ESPN→sportsbook
+calibration mapping (PchipInterpolator, symmetric, anchored at
+(0,0) and (0.5, 0.5)). Bilateral analysis and §6.7 asymmetric-
+any-order re-run at sportsbook-denominated thresholds.
+
+### Key finding: Strategy 1 survives but is marginal
+
+Optimal operating point: (0.25, 0.35) sportsbook-denominated.
+
+| Metric | ESPN (0.20, 0.30) | SB-calibrated (0.25, 0.35) |
+|--------|-------------------|----------------------------|
+| Opportunity rate (\|spread\|≤6) | 49.0% | 17.7% |
+| Gross per trade | $50.00 | $40.00 |
+| Net per trade (after fees) | $47.40 | $37.08 |
+| EV per competitive game | $23.23 | $6.55 |
+| EV per game (−1¢ spread) | — | $6.20 |
+
+72% reduction in EV per game from recalibration. Strategy 1 is
+not dead (positive EV at ~$6.55/game on 100-contract sizing),
+but is marginal — liquidity haircuts and realized spreads from
+Phase 3B data could push this below viability.
+
+### Calibration mapping reference points
+
+| ESPN WP | Mapped SB WP |
+|---------|-------------|
+| 0.05 | 0.195 |
+| 0.10 | 0.325 |
+| 0.15 | 0.342 |
+| 0.20 | 0.467 |
+
+### Caveat
+
+The 0.10-0.15 ESPN range shows a plateau in the mapping (both
+mapping to ~0.33-0.34 SB). This is likely interpolation
+behavior from sparse calibration data in that range, not a real
+feature of the pricing relationship. More backfill data would
+smooth the curve but wouldn't change the directional finding.
+
+### Open items
+
+- Phase 3B formal (≥10 games of Kalshi data): test whether
+  realized bilateral opportunities at (0.25, 0.35) match the
+  17.7% rate, and measure realized spreads at those prices.
+- Strategy 3 scoping: swing-trading analysis on accumulated
+  Kalshi oscillation data. Increasingly the priority given
+  Strategy 1's marginal status and Strategy 2's kill signal.
+
+### Does not supersede
+
+All prior entries stand. This entry recalibrates Strategy 1
+using the sportsbook backfill finding.

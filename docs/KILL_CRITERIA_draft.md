@@ -76,6 +76,31 @@ data supports a different number.
   The MM's floor pricing is too high for the arithmetic to
   work after costs.
 
+### Post-recalibration update (2026-04-19)
+
+The thresholds above were written in ESPN WP terms. Sportsbook
+backfill (30 games, 57 dip observations) established that ESPN
+WP diverges from real-money markets by +10-17pp at the tails.
+Recalibrated analysis at sportsbook-denominated thresholds:
+
+- **Opportunity rate at (0.25, 0.35) SB thresholds: 17.7%** of
+  |spread|≤6 games (asymmetric-any-order). Down from 49% at
+  ESPN (0.20, 0.30).
+- **EV per competitive game: $6.55** (100 contracts, taker-
+  taker, no spread cost). Down from $23.23 at ESPN thresholds.
+- **Graduation bar (12% at strict bilateral)** was sized against
+  ESPN-denominated strict bilateral (26.6%). At SB-calibrated
+  strict (0.35, 0.35), the rate is 18.9% — above the 12% bar.
+  However, the 12% bar was calibrated to a per-trade profit
+  that is now thinner ($30 gross at (0.35, 0.35) vs $60+ at
+  ESPN (0.20, 0.20)). The bar itself needs reconsideration
+  against the recalibrated economics.
+
+The existing kill criteria remain valid as *structure* (rate ×
+fill × profit) but the specific numerical thresholds should be
+re-anchored to sportsbook-denominated entry prices once Phase
+3B provides realized Kalshi data at these price levels.
+
 ---
 
 ## Strategy 2: Single-side mean-reversion
@@ -120,6 +145,21 @@ data supports a different number.
 - Win rate at ≤ $0.10 Kalshi price is < 12%. The asymmetric
   payoff is real but not enough to overcome the cost of the
   ~88% loss rate after fees.
+
+### Preliminary kill signal (2026-04-19)
+
+Sportsbook backfill shows Kalshi/sportsbooks price underdog
+moments at +10-17pp above ESPN. The +3pp ESPN-vs-actual residual
+(Phase 3A) is entirely absorbed. Residual against Kalshi is
+estimated at −7 to −14pp (negative edge). This meets the kill
+criterion "Residual against Kalshi is < +3pp across all time-
+remaining cuts" with substantial margin.
+
+Formal kill deferred pending Phase 3B confirmation with ≥10
+games of Kalshi-priced-moment resolution data. However, rescue
+would require the sportsbook backfill to be fundamentally wrong
+about the Kalshi-ESPN gap — unlikely given 30-game, 341-quote
+concordance with 8+ independent sportsbooks.
 
 ---
 

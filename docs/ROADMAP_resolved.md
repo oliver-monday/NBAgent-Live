@@ -113,3 +113,41 @@ targeted historical backfill). Budget ~2,400 credits/month on
 ~10,000/month envelope. First-session implementation handoff
 documented. Implementation queued for a fresh session starting
 with Phase O1 (live scraper MVP).
+
+## 2026-04-18 — Phase 3B smoke test (n=2, then n=6)
+
+First paired Kalshi-ESPN analysis. Identified Kalshi-ESPN
+compression pattern (+10-14pp at WP tails). Pipeline validated:
+as-of merge, complement check, screenshot cross-check. n=4
+usable games (CHA-ORL, GSW-PHX, TOR-CLE, HOU-LAL). MIN-DEN
+lost (logger gap), ATL-NYK unusable (stale pricing).
+
+## 2026-04-19 — Sportsbook backfill (Strategy 1 focus)
+
+Odds API historical backfill at bilateral dip moments. 30
+games, 57 observations, 341 fresh bookmaker quotes. Established
+ESPN as the outlier: sportsbooks match Kalshi compression
+(+12.58pp mean residual vs ESPN). Reframed §1.1 from "Kalshi ≈
+ESPN" to "Kalshi ≈ sportsbook consensus." Strategy 2
+preliminary kill signal issued.
+
+## 2026-04-19 — Strategy 1 recalibrated bilateral analysis
+
+Re-ran bilateral rates at sportsbook-denominated thresholds
+using 57-point calibration mapping. Optimal operating point:
+(0.25, 0.35) at 17.7% rate, $6.55 EV/game — marginal but
+positive. Down from ESPN-denominated $23.23/game (72%
+reduction).
+
+## 2026-04-19 — Logger updates
+
+- MAX_RUN_SEC default changed from 5h15m to 24h for local-run
+  convenience.
+- Per-game JSONL file split (one file per Kalshi ticker).
+- Health check script: analysis/logger_health_check.py.
+- GitHub Actions workflow deactivated; logger runs locally.
+
+## 2026-04-19 — Gitignore orderbook snapshots
+
+Orderbook snapshot files removed from git tracking (backed up
+to personal cloud storage). Reduces repo storage footprint.

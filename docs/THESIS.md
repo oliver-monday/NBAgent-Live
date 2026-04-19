@@ -3,8 +3,11 @@
 ## Core thesis
 
 NBA live-game win probability is priced tightly on Kalshi — the market
-mirrors consensus WP models (ESPN-style margin + time) to within
-~1pp, updated continuously by algorithmic market makers. The naive
+mirrors sportsbook consensus pricing closely — both Kalshi and sportsbooks
+compress toward the pre-game prior relative to ESPN's more game-state-
+reactive WP model, diverging from ESPN by 10-15pp at the tails but
+tracking each other to within ~3pp (cross-book std),
+updated continuously by algorithmic market makers. The naive
 framing — "beat Kalshi's pricing" — treats this like a sportsbook
 prop-market edge hunt, and it fails for the same reason it fails on
 FanDuel moneylines: the market is efficient at the per-moment level.
@@ -45,10 +48,13 @@ risk the $0.10 cost, payoff up to $1.00.
 
 - Edge is **model-dependent** — requires Kalshi's price to be
   meaningfully below the true probability.
-- Pilot data shows Stern-style WP models underestimate NBA recovery
-  probability by ~9pp at the tails. If Kalshi mirrors Stern/ESPN
-  models, this residual translates to real edge. If Kalshi's engine
-  is better-calibrated, edge evaporates.
+- Pilot data showed Stern-style WP models underestimate NBA recovery
+  probability by ~9pp at the tails, and ESPN by ~3pp. However,
+  sportsbook backfill (2026-04-19) established that Kalshi and
+  sportsbooks price those moments at +10-17pp *above* ESPN — well
+  above actual win rates. The model-dependent edge appears negative
+  against real-money markets. **Preliminary kill signal issued; formal
+  kill pending Phase 3B confirmation.**
 - Validation requires paired (Kalshi price, game state) data — the
   core purpose of Phase 1's live logging.
 
@@ -114,14 +120,19 @@ Each phase must validate before the next is scoped.
 - **Phase 2 — Historical grounding.** Ingest ESPN PBP + WP per
   gameId. Provides event-level game state to pair with Kalshi
   snapshots and enables backtest replication at better granularity.
-- **Phase 3 — Strategy validation.** Re-run bilateral dip analysis
-  on PBP foundation, overlay Kalshi prices, test whether the +9pp
-  calibration residual survives against Kalshi (vs against Stern).
-  Quantify liquidity at target price points. Output: validated
-  strategy spec with entry rules, sizing, expected frequency.
+- **Phase 3 — Strategy validation.** Phase 3A (ESPN-only bilateral
+  analysis, complete) established baseline rates. Phase 3B (paired
+  Kalshi+ESPN, in progress) revealed ESPN diverges from real-money
+  markets by +10-17pp at the tails. Sportsbook backfill confirmed
+  Kalshi ≈ sportsbook consensus. Recalibrated bilateral analysis
+  produced revised Strategy 1 operating point and preliminary
+  Strategy 2 kill signal. Ongoing: accumulate Kalshi data for
+  realized-spread measurement and Strategy 3 scoping.
 - **Phase 4 — Live decision engine.** Only designed after Phase 3
-  produces a validated spec. Initial form is signal alerts for
-  manual paper-trading. Automation is a later question.
+  produces a validated spec. Note: ESPN PBP is post-game only; a
+  live decision engine would need a real-time game-state source
+  (live score feed, Kalshi price as proxy, or similar). Initial
+  form is signal alerts for manual paper-trading.
 
 ## Success criteria
 

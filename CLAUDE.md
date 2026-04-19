@@ -21,23 +21,27 @@ The split exists because:
 We are in research phase. **Do not build agent/frontend infrastructure
 until research produces a validated strategy spec.** Progress:
 
-1. **Phase 1** — Live Kalshi orderbook capture. Implemented, first
-   confirmed production run 2026-04-17.
-2. **Phase 2** — ESPN PBP + WP historical grounding. Complete for
-   2025-26 regular season (1,234 / 1,243 games usable). Multi-season
-   backfill (2014-2024) still open but low priority.
-3. **Phase 3** — Analysis. Phase 3A done on ESPN-only data
-   (bilateral dip + at-moment calibration, ESPN residual +3pp).
-   Phase 3B pending — paired Kalshi+ESPN analysis, blocked on
-   ≥5-10 games of live Kalshi data during 2026 playoffs. §1.4
-   spread-anchoring analyses are runnable from existing ESPN data
-   and may run in parallel.
-4. **Phase 4** — Live decision engine (rule-based trading bot;
-   no LLM inference, no live ML). Staged rollout planned:
-   signal alerts → paper trading → capped live → full. Core
-   loop, components, risks, and graduation structure documented
-   in `docs/ROADMAP_active.md`. Not scoped until 3B validates a
-   strategy spec.
+1. **Phase 1** — Live Kalshi orderbook capture. Confirmed
+   working. Running locally (GitHub Actions deactivated to
+   conserve minutes). Per-game file split landed 2026-04-19.
+2. **Phase 2** — ESPN PBP + WP historical grounding. Complete
+   for 2025-26 regular season (1,234 / 1,243 games usable).
+3. **Phase 3** — Analysis.
+   - Phase 3A done (ESPN-only bilateral + calibration).
+   - Phase 3B smoke test done (n=4 usable paired games).
+     Key finding: Kalshi and sportsbooks compress relative to
+     ESPN by +10-17pp at the tails.
+   - Sportsbook backfill done (57 dip observations). ESPN is
+     the outlier, not Kalshi.
+   - Strategy 1 recalibrated: (0.25, 0.35) optimal, 17.7%
+     rate, $6.55 EV/game — marginal.
+   - Strategy 2 preliminary kill signal issued.
+   - **Next: Strategy 3 scoping** (swing-trading on Kalshi
+     oscillation data) — elevated priority.
+   - Phase 3B formal (≥10 games) still needed for realized
+     spreads and Strategy 3 characterization.
+4. **Phase 4** — Live decision engine. Not scoped until
+   Phase 3 produces a validated strategy spec.
 
 **Parallel track — Phase O:** Odds API integration planned (see
 `docs/ODDS_API_INTEGRATION.md`). Implementation queued for a

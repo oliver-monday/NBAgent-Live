@@ -6,25 +6,28 @@
   analysis pipeline validates end-to-end and Phase 3B produces
   first paired findings. Low urgency.
 
-## Phase 3 — Analysis on ESPN WP foundation
+## Phase 3 — Analysis on ESPN WP foundation + paired data
 
-- **Phase 3B** — paired Kalshi + ESPN analysis. Blocked on
-  ≥5-10 games of live Kalshi data accumulation during 2026
-  playoffs. Covers §1.1 Kalshi-vs-ESPN residual, §2.1 liquidity
-  characterization, §2.5 realized spread distribution, §6.5 MM
-  behavior at extremes, §6.6 flow isolation (Kalshi-only lens
-  — Odds API provides a cleaner test of the same question in
-  Phase O3).
-- **§1.4 retirement analyses** — three spread-anchoring tests
-  runnable from existing ESPN data, no Kalshi dependency. See
-  `docs/THESIS_open_questions.md` §1.4. Potentially restructures
-  Strategy 2's entry rule (spread-conditional residual) and
-  Strategy 3's exit target (opening line vs 50/50).
-- **Empirical WP model** — fit logistic on (margin,
-  time_remaining, spread). Test whether the ESPN +3pp residual
-  survives a properly fitted empirical model or is an artifact
-  of ESPN's specific modeling choices. Lower priority than 3B
-  and §1.4.
+- **Phase 3B formal** — paired Kalshi + ESPN + sportsbook
+  analysis on ≥10 games. Blocked on Kalshi data accumulation
+  (currently n=4 usable). Covers: realized spread measurement
+  at (0.25, 0.35) entry prices, Strategy 1 opportunity rate
+  validation on Kalshi data, Strategy 3 oscillation
+  characterization.
+- **Strategy 3 scoping** — swing-trading analysis on
+  accumulated Kalshi price oscillation data. Priority
+  elevated given Strategy 1 marginal status and Strategy 2
+  preliminary kill. Needs: entry/exit rule framework,
+  round-trip frequency, swing magnitude distribution,
+  hold-time analysis.
+- **§1.4 retirement analyses** — three spread-anchoring tests.
+  Deprioritized: the strategy-relevant question (how does
+  Kalshi behave at the tails?) is now answered directly by
+  the sportsbook backfill. Analyses remain informative for
+  ESPN model understanding but are no longer load-bearing.
+- **Empirical WP model** — deprioritized. The calibration
+  question is now answered empirically via sportsbook
+  consensus rather than model-fitting.
 
 ## Phase 4 — Live decision engine (speculative)
 
@@ -179,3 +182,12 @@ flow-vs-game-state disambiguator for §6.6.
   data. Gated on ≥5 games of Stream A data.
 - Phase O4 — §1.4 focused historical test using Stream C
   backfill. 20 games × 4 in-game moments. ~800 credits.
+
+## Infrastructure
+
+- **Logger local-run reliability** — monitor for missed games.
+  MIN-DEN (4/18) and ATL-NYK (4/18) lost due to logger gaps.
+  Consider automation options (launchd on Mac, cheap VPS) once
+  research phase stabilizes.
+- **Per-game file split** — landed 2026-04-19. Monitor file
+  sizes and git repo growth.
