@@ -37,7 +37,7 @@ from scrapers.espn_scraper import _norm_team, scrape_game
 KALSHI_DIR = Path("data/orderbook_snapshots")
 WP_DIR = Path("data/espn_wp")
 PBP_DIR = Path("data/pbp")
-OUTPUT_MD = Path("docs/analysis_outputs/3b_smoke_test_2026_04_18.md")
+OUTPUT_MD = Path("docs/analysis_outputs/3b_smoke_test_n6_2026_04_18.md")
 
 # Same bucket edges as Phase 3A calibration for direct comparability
 CALIB_BUCKETS = [0.0, 0.025, 0.05, 0.075, 0.10, 0.125, 0.15, 0.20,
