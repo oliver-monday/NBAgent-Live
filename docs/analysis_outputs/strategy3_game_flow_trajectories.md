@@ -146,3 +146,63 @@ Note: we cannot predict bucket pre-tip reliably. This is an upper-bound scenario
 
 All round-trip counts above use ESPN WP as the signal. The Phase 3B sportsbook backfill established that real-money markets compress +10-17pp relative to ESPN at the tails: a $0.10 ESPN swing is typically a $0.05-$0.07 Kalshi swing. The round-trip threshold grid in this analysis (entry ≤ 0.35, exit ≥ 0.50) therefore implies a Kalshi-equivalent swing of maybe $0.10 gross minus spread rather than the full $0.15. The bucket-relative ranking should transfer (games where ESPN shows lots of swings will show more Kalshi swings than games where ESPN shows few), but the absolute yield will be smaller in production. Tier 3 Odds API sportsbook-timeseries backfill is the next validation step.
 
+
+## 7. Favorite-side oscillation per bucket
+
+Favorite side identified per game via `home_spread` sign: `home_spread < 0` → home is favorite; `> 0` → away is favorite; `== 0` or NaN → pick-em game, skipped. Per-game features: `fav_min_wp`, count of dips-and-recoveries below 0.60, and count of complete round-trips at entry `fav_wp ≤ 0.60`, exit `fav_wp ≥ 0.70`. Resolution backstop tracked: positions still open at game end settle at $1.00 if favorite won, $0.00 if favorite lost.
+
+
+### All games
+
+| Bucket | N | Mean fav_min_wp | Mean fav_dips_below_60 | Mean fav_roundtrips | % ≥1 fav_roundtrip | Fav win rate (when held to resolution) |
+|--------|---|-----------------|------------------------|---------------------|--------------------|-------------------------------------|
+| Blowout | 366 | 0.503 | 2.47 | 0.64 | 44.8% | 0.0% (n=66) |
+| Comeback | 298 | 0.097 | 8.79 | 2.26 | 90.9% | 23.1% (n=195) |
+| Late collapse | 0 | — | — | — | — | — |
+| Back-and-forth | 208 | 0.212 | 11.11 | 2.64 | 88.5% | 10.2% (n=88) |
+| Wire-to-wire | 263 | 0.456 | 3.62 | 1.20 | 58.9% | 18.2% (n=44) |
+
+### |spread| ≤ 6
+
+| Bucket | N | Mean fav_min_wp | Mean fav_dips_below_60 | Mean fav_roundtrips | % ≥1 fav_roundtrip | Fav win rate (when held to resolution) |
+|--------|---|-----------------|------------------------|---------------------|--------------------|-------------------------------------|
+| Blowout | 144 | 0.317 | 3.65 | 0.87 | 63.2% | 0.0% (n=51) |
+| Comeback | 171 | 0.098 | 9.20 | 2.41 | 96.5% | 25.2% (n=103) |
+| Late collapse | 0 | — | — | — | — | — |
+| Back-and-forth | 135 | 0.196 | 10.46 | 2.45 | 84.4% | 6.3% (n=63) |
+| Wire-to-wire | 99 | 0.308 | 4.57 | 1.29 | 65.7% | 8.8% (n=34) |
+
+## 8. Favorite-side Strategy 3 universe sizing
+
+**Games covered** (non-pickem, ≥10 obs): 1135 of 1234 processed.
+
+**Favorite-side round-trips** (entry ≤0.60, exit ≥0.70):
+
+- Games with ≥1 completed round-trip: **774** (68.2% of covered).
+- Total completed round-trips: **1775**.
+- Total resolution wins (backstop fired, favorite won): **62**.
+- Total resolution losses (backstop fired, favorite lost): **331**.
+- Fav-win rate when held to resolution: **15.8%**.
+
+
+**Blended EV per favorite-side position** (maker-maker, 100 contracts, pooled across all games with a triggering entry):
+
+- n positions: 2168
+- mean net: **$+4.34**
+- median net: $+12.41
+- p25 / p75: $+10.31 / $+15.36
+- stdev: $26.50
+- fraction of positions with net > 0: 84.7%
+
+
+### Favorite vs underdog universe comparison
+
+| Side | Games with ≥1 round-trip | % of processed |
+|------|-------------------------|----------------|
+| Underdog (entry ≤0.35, exit ≥0.50, either side) | 782 | 63.4% |
+| Favorite (entry ≤0.60, exit ≥0.70) | 774 | 68.2% (of covered) |
+
+### ESPN caveat + favorite-side note
+
+All favorite-side numbers above use ESPN WP as the signal. Real-money markets compress +10-17pp relative to ESPN at the tails; favorites at ESPN 0.70 are typically priced at Kalshi ~0.65. In market terms, the entry threshold of 0.60 ESPN corresponds to roughly 0.55 on Kalshi, and the exit of 0.70 ESPN to ~0.65 on Kalshi. This compresses the completed-trip profit range (smaller $ per trade) but also *increases* the resolution backstop value — when you're buying at a lower effective Kalshi price, a favorite win still settles at $1.00, so the resolution profit grows relative to the active-exit profit. Net effect: the mix of completed-vs-resolution outcomes on real-money markets will differ from the ESPN projection here. Tier 3 Odds API sportsbook-timeseries backfill is the next validation gate.
+

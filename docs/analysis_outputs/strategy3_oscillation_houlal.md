@@ -116,6 +116,46 @@ For each completed round-trip (both Section 3 and 3B), we scan the mid timeserie
 | mean   | $0.042 | 11.1% | 612 |
 | max    | $0.090 | 22.8% | 1139 |
 
+## 3D. Favorite-side round-trip scan (with resolution backstop)
+
+LAL was home-court favorite in HOU-LAL and won 107-98, so any LAL YES position held to settlement resolves at $1.00. Entry thresholds $0.55-$0.65 target favorite-side dips; if the dip recovers to the exit threshold, the trip is a completed round-trip (like Sections 3/3B). If the favorite never recovers and instead wins the game, the position settles at $1.00 — converting a 'missed exit' into an accidental bonus. If the favorite loses, the position settles at $0.00 and the trader takes a full-sized loss.
+
+
+### Summary — favorite-side grid
+
+| Entry | Exit | Completed | Res wins | Res losses | Mean net (maker, completed) | Mean net (resolution) |
+|-------|------|-----------|----------|-------------|-----------------------------|----------------------|
+| 0.55 | 0.65 | 2 | 0 | 0 | $18.42 | — |
+| 0.55 | 0.70 | 2 | 0 | 0 | $23.45 | — |
+| 0.60 | 0.70 | 2 | 0 | 0 | $20.71 | — |
+| 0.60 | 0.75 | 1 | 0 | 0 | $33.25 | — |
+| 0.65 | 0.75 | 1 | 0 | 0 | $33.25 | — |
+| 0.65 | 0.80 | 1 | 0 | 0 | $38.30 | — |
+
+### All favorite-side trips (completed + resolution)
+
+| entry ts | entry | exit/res ts | exit/res price | hold (min) | gross | net (maker) | MAE drawdown | outcome |
+|----------|-------|-------------|----------------|-----------|-------|-------------|--------------|---------|
+| 00:48:06 (@0.55→0.65) | 0.425 | 01:26:35 | 0.655 | 38.5 | $23.00 | $22.17 | $0.020 (5%) | completed |
+| 00:48:06 (@0.55→0.70) | 0.425 | 01:41:05 | 0.715 | 53.0 | $29.00 | $28.21 | $0.020 (5%) | completed |
+| 00:48:06 (@0.60→0.70) | 0.425 | 01:41:05 | 0.715 | 53.0 | $29.00 | $28.21 | $0.020 (5%) | completed |
+| 00:48:06 (@0.60→0.75) | 0.425 | 02:23:35 | 0.765 | 95.5 | $34.00 | $33.25 | $0.020 (5%) | completed |
+| 00:48:06 (@0.65→0.75) | 0.425 | 02:23:35 | 0.765 | 95.5 | $34.00 | $33.25 | $0.020 (5%) | completed |
+| 00:48:06 (@0.65→0.80) | 0.425 | 02:34:35 | 0.815 | 106.5 | $39.00 | $38.30 | $0.020 (5%) | completed |
+| 01:49:05 (@0.60→0.70) | 0.575 | 02:22:35 | 0.715 | 33.5 | $14.00 | $13.21 | $0.100 (17%) | completed |
+| 01:49:35 (@0.55→0.65) | 0.520 | 02:20:06 | 0.675 | 30.5 | $15.50 | $14.67 | $0.045 (9%) | completed |
+| 01:49:35 (@0.55→0.70) | 0.520 | 02:22:35 | 0.715 | 33.0 | $19.50 | $18.70 | $0.045 (9%) | completed |
+
+## 3E. Dual-exit expected value (favorite side)
+
+For each entry threshold, pool positions entered at that level under the tightest exit rule (+$0.10) and compute the blended EV across completed round-trips and resolution outcomes. This captures the value of the hold-to-resolution backstop: even if the active-exit rule fails, a favorite win saves the position, and a favorite loss destroys it.
+
+| Entry | n_total | n_completed | n_res_win | n_res_loss | Blended EV / trade (maker) |
+|-------|---------|-------------|-----------|------------|---------------------------|
+| 0.55 | 2 | 2 | 0 | 0 | $18.42 |
+| 0.60 | 2 | 2 | 0 | 0 | $20.71 |
+| 0.65 | 1 | 1 | 0 | 0 | $33.25 |
+
 ## 4. Bid-ask spread at Strategy 3 entry price levels
 
 Spread observations while mid ≤ $0.30, bucketed by mid price level. Reports spread in dollars and as a percentage of mid (the latter is the correct cost metric for Strategy 3 — at $0.02 spread, mid=$0.15 is 13% cost vs mid=$0.25 is 8%).
@@ -154,3 +194,6 @@ Single-game observation only — n=1 is not statistically meaningful. This chara
 | Mid-range round-trips (0.35, 0.50) | ≥ 1 per competitive game | 1 complete | ✓ Pass |
 | Mid-range round-trip net profit (maker-maker, pooled) | > $0 after fees | $14.55 | ✓ Pass |
 | Max adverse excursion (median of pooled completes) | < 50% of entry price | 11.6% of entry | ✓ Pass |
+
+| Favorite-side round-trips (best pair) | ≥ 1 | 2 completed at (0.55, 0.65) | ✓ Pass |
+| Favorite-side blended EV (best entry, maker) | > $0 | $33.25 @ entry 0.65 | ✓ Pass |

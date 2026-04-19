@@ -718,6 +718,71 @@ drawdowns. This is a pipeline validation and a proof-of-concept,
 not a graduation signal. Multi-game confirmation (≥5-10
 competitive games) is the next gate.
 
+### Favorite-side analysis (same session)
+
+Added favorite-side round-trip scans to both HOU-LAL (Kalshi,
+Section 3D/3E) and game flow trajectory (ESPN WP, Sections
+7/8 behind `--include-favorite` flag). The favorite side has
+a structurally different risk profile: a hold-to-resolution
+backstop exists (if the favorite wins, an "out-of-the-money"
+position at entry 0.60 still settles at $1.00 = +$40/100
+contracts). The flip side: if the favorite loses, the position
+settles at $0.00 = -$60/100 contracts.
+
+**HOU-LAL favorite-side (LAL, 100 contracts, maker-maker):**
+
+| Entry | n_total | n_completed | n_res_win | n_res_loss | Blended EV |
+|-------|---------|-------------|-----------|------------|------------|
+| 0.55 | 2 | 2 | 0 | 0 | $18.42 |
+| 0.60 | 2 | 2 | 0 | 0 | $20.71 |
+| 0.65 | 1 | 1 | 0 | 0 | **$33.25** |
+
+Every LAL position at every tested entry rebounded within the
+game window — zero resolution outcomes, zero MAE-triggered
+losses. The backstop wasn't needed. Best-pair net $33.25 at
+entry 0.65 exit 0.75 is about 2× the underdog-side (0.35, 0.50)
+best net ($17.16) from Section 3B. n=1 game, so directionally
+interesting but not dispositive.
+
+**Game flow trajectory favorite-side sweep (ESPN WP, N=1,135
+non-pickem games with ≥10 obs):**
+
+- **Games with ≥1 completed favorite round-trip: 774 (68.2%)**
+  on entry `fav_wp ≤ 0.60`, exit `fav_wp ≥ 0.70`
+- **Resolution outcomes**: **62 wins vs 331 losses** — the
+  backstop is *adversely selected*. When a position is held to
+  resolution, the favorite loses **84%** of the time. This is
+  the structural penalty of favorite-side strategy: positions
+  that fail to rebound are selection-biased toward favorites
+  who went on to lose.
+- **Blended mean net (maker, pooled across 2,168 positions):
+  $+4.34**. Positive but modest, with a fat left tail from the
+  331 resolution losses at −$60 each.
+- Comeback bucket remains the most productive shape; by
+  construction, a "comeback" game has the favorite dipping
+  deeply, so favorite-side entries trigger most often there.
+
+**Net assessment of favorite-side strategy:**
+
+- The *completed round-trip* fraction is profitable and
+  frequent (68.2% coverage, positive mean net on completed).
+- The *resolution backstop* is **a trap, not a rescue** at
+  ESPN-WP thresholds: adverse selection makes resolution
+  losses dominate resolution wins by 5.3×.
+- Real operational strategy would need either (a) a hard stop
+  rule that exits at a loss rather than allowing the
+  resolution settlement, or (b) a tighter entry threshold
+  that reduces adverse selection (e.g., only enter when
+  favorite's WP dips below 0.50, implying a more meaningful
+  comeback is in progress rather than a late-game grind).
+- ESPN compression caveat applies: a favorite at ESPN 0.60 is
+  roughly Kalshi 0.55 in market price terms. The entry /exit
+  thresholds shift on Kalshi, and the resolution-win / loss
+  ratio likely changes too — this analysis is an upper bound
+  for the favorite-side universe, not a production signal.
+  Tier 3 Odds API sportsbook-timeseries backfill is the
+  validation gate.
+
 ### Does not supersede
 
 All prior entries stand. This is the first Strategy 3-specific

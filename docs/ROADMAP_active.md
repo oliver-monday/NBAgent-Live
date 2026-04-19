@@ -24,6 +24,9 @@
     See `docs/analysis_outputs/strategy3_oscillation_houlal.md`.
   - Game flow trajectory analysis complete (ESPN WP, N=1,234).
     See `docs/analysis_outputs/strategy3_game_flow_trajectories.md`.
+  - Favorite-side analysis added to both HOU-LAL and game flow
+    trajectory scripts (game flow via `--include-favorite` flag;
+    default behavior unchanged).
 - **§1.4 retirement analyses** — three spread-anchoring tests.
   Deprioritized: the strategy-relevant question (how does
   Kalshi behave at the tails?) is now answered directly by

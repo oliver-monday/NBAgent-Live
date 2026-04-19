@@ -19,6 +19,7 @@ transfer; the *absolute* swing counts and round-trip rates will not.
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 from typing import Any
@@ -151,6 +152,70 @@ def count_complete_roundtrips(
         else:
             i += 1
     return n
+
+
+# ---- Favorite-side scan helpers (gated on --include-favorite) ---------
+
+def _maker_fee(contracts: int, price: float) -> float:
+    """Kalshi maker fee: round_up(0.0175 × C × P × (1-P)) to the cent."""
+    if price <= 0 or price >= 1:
+        return 0.0
+    return float(np.ceil(0.0175 * contracts * price * (1.0 - price) * 100)
+                 / 100)
+
+
+def fav_trip_outcomes(
+    fav_wp: np.ndarray, entry_thresh: float, exit_thresh: float,
+    favorite_won: bool,
+) -> list[dict]:
+    """Scan the favorite's WP series and return a list of position
+    outcomes: each dict has entry_price, exit_price (or resolution
+    price), outcome_type in {'completed', 'resolution_win',
+    'resolution_loss'}.
+
+    Same greedy scan as count_complete_roundtrips, but the incomplete
+    trip at series end becomes a resolution outcome rather than being
+    dropped."""
+    outcomes: list[dict] = []
+    i = 0
+    sz = len(fav_wp)
+    while i < sz:
+        if fav_wp[i] <= entry_thresh:
+            entry_price = float(fav_wp[i])
+            j = i + 1
+            while j < sz and fav_wp[j] < exit_thresh:
+                j += 1
+            if j < sz:
+                outcomes.append({
+                    "entry_price": entry_price,
+                    "exit_price": float(fav_wp[j]),
+                    "outcome": "completed",
+                })
+                i = j + 1
+            else:
+                resolution_price = 1.0 if favorite_won else 0.0
+                outcomes.append({
+                    "entry_price": entry_price,
+                    "exit_price": resolution_price,
+                    "outcome": ("resolution_win" if favorite_won
+                                else "resolution_loss"),
+                })
+                break
+        else:
+            i += 1
+    return outcomes
+
+
+def score_fav_trip_maker(outcome: dict, contracts: int = 100) -> float:
+    """Net maker-maker profit for a favorite-side trip. Completed:
+    entry + exit fees. Resolution: entry fee only (contract
+    self-settles)."""
+    gross = (outcome["exit_price"] - outcome["entry_price"]) * contracts
+    entry_fee = _maker_fee(contracts, outcome["entry_price"])
+    if outcome["outcome"] == "completed":
+        exit_fee = _maker_fee(contracts, outcome["exit_price"])
+        return gross - entry_fee - exit_fee
+    return gross - entry_fee
 
 
 def detect_swings(values: np.ndarray) -> list[dict]:
@@ -339,7 +404,17 @@ def _fmt_n_pct(n: int, total: int) -> str:
 
 # ---- Main --------------------------------------------------------------
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="ESPN WP game-flow trajectory analysis."
+    )
+    parser.add_argument(
+        "--include-favorite", action="store_true",
+        help=("Add favorite-side round-trip sections 7 + 8 appended "
+              "to the report. Default behavior (no flag) is unchanged."),
+    )
+    args = parser.parse_args(argv)
+
     rep = Report()
     rep.md_only("# Game flow trajectory analysis — ESPN WP, 2025-26 season\n")
     rep.md_only(
@@ -801,6 +876,231 @@ def main() -> int:
     if bucket_rows:
         print(f"  Most productive: {BUCKET_LABEL[top[0]]} "
               f"({top[1]} round-trips, {top[2]:.1f}% of total)")
+
+    # ---- Section 7 + 8: Favorite-side analysis (gated) ----
+    if args.include_favorite:
+        print("\n=== Favorite-side analysis (--include-favorite) ===")
+        rep.md_only("\n## 7. Favorite-side oscillation per bucket\n")
+        rep.md_only(
+            "Favorite side identified per game via `home_spread` sign: "
+            "`home_spread < 0` → home is favorite; `> 0` → away is "
+            "favorite; `== 0` or NaN → pick-em game, skipped. "
+            "Per-game features: `fav_min_wp`, count of dips-and-"
+            "recoveries below 0.60, and count of complete round-trips "
+            "at entry `fav_wp ≤ 0.60`, exit `fav_wp ≥ 0.70`. "
+            "Resolution backstop tracked: positions still open at "
+            "game end settle at $1.00 if favorite won, $0.00 if "
+            "favorite lost.\n"
+        )
+
+        fav_features: list[dict] = []
+        skipped_pickem = 0
+        skipped_fewobs = 0
+        for gid, obs_sub in obs.groupby("game_id", sort=False):
+            if gid not in game_meta.index:
+                continue
+            meta = game_meta.loc[gid]
+            home_spread = meta["home_spread"]
+            if pd.isna(home_spread) or home_spread == 0:
+                skipped_pickem += 1
+                continue
+            obs_sorted = obs_sub.dropna(
+                subset=["home_wp", "sec_rem", "elapsed"]
+            ).sort_values("elapsed")
+            live = obs_sorted[obs_sorted["sec_rem"] >= TRADEABLE_SEC_REM_MIN]
+            if len(live) < 10:
+                skipped_fewobs += 1
+                continue
+            home_wp = live["home_wp"].to_numpy(dtype=float)
+            if home_spread < 0:
+                fav_wp = home_wp
+                home_is_fav = True
+            else:
+                fav_wp = 1.0 - home_wp
+                home_is_fav = False
+            home_won = bool(meta["home_won"])
+            fav_won = home_won if home_is_fav else (not home_won)
+
+            # Features
+            fav_min_wp = float(fav_wp.min())
+            below_60 = fav_wp < 0.60
+            if len(below_60) > 1:
+                transitions = np.diff(below_60.astype(int))
+                n_dips = int(np.sum(transitions == -1))
+            else:
+                n_dips = 0
+            n_rts_scalar = count_complete_roundtrips(fav_wp, 0.60, 0.70)
+            outcomes = fav_trip_outcomes(
+                fav_wp, 0.60, 0.70, favorite_won=fav_won,
+            )
+            n_completed = sum(
+                1 for o in outcomes if o["outcome"] == "completed"
+            )
+            n_res_win = sum(
+                1 for o in outcomes if o["outcome"] == "resolution_win"
+            )
+            n_res_loss = sum(
+                1 for o in outcomes if o["outcome"] == "resolution_loss"
+            )
+            trip_nets = [score_fav_trip_maker(o) for o in outcomes]
+
+            fav_features.append({
+                "game_id": gid,
+                "home_is_fav": home_is_fav,
+                "fav_won": fav_won,
+                "fav_min_wp": fav_min_wp,
+                "fav_n_dips_below_60": n_dips,
+                "fav_midrange_roundtrips": n_rts_scalar,
+                "n_fav_completed": n_completed,
+                "n_fav_res_win": n_res_win,
+                "n_fav_res_loss": n_res_loss,
+                "n_fav_total": len(outcomes),
+                "fav_net_list": trip_nets,
+            })
+
+        print(f"  Favorite-side features: {len(fav_features):,} games  "
+              f"(skipped {skipped_pickem} pick-em; "
+              f"{skipped_fewobs} few-obs)")
+
+        fav_df = pd.DataFrame(fav_features)
+        combined = df.merge(
+            fav_df.drop(columns=["fav_net_list"], errors="ignore"),
+            on="game_id", how="left",
+        )
+
+        # Section 7: per-bucket favorite features
+        def _fav_bucket_table(frame: pd.DataFrame, label: str) -> None:
+            rep.md_only(f"\n### {label}\n")
+            rep.md_only(
+                "| Bucket | N | Mean fav_min_wp | Mean fav_dips_below_60 | "
+                "Mean fav_roundtrips | % ≥1 fav_roundtrip | "
+                "Fav win rate (when held to resolution) |\n"
+                "|--------|---|-----------------|------------------------|"
+                "---------------------|--------------------|"
+                "-------------------------------------|"
+            )
+            for b in BUCKET_ORDER:
+                sub = frame[
+                    (frame["bucket"] == b) & frame["fav_min_wp"].notna()
+                ]
+                if sub.empty:
+                    rep.md_only(f"| {BUCKET_LABEL[b]} | 0 | — | — | "
+                                "— | — | — |")
+                    continue
+                held = sub[sub["n_fav_res_win"] + sub["n_fav_res_loss"] > 0]
+                if len(held):
+                    win_rate = held["n_fav_res_win"].sum() / (
+                        held["n_fav_res_win"].sum()
+                        + held["n_fav_res_loss"].sum()
+                    ) * 100
+                    win_rate_str = f"{win_rate:.1f}% (n={len(held)})"
+                else:
+                    win_rate_str = "—"
+                rep.md_only(
+                    f"| {BUCKET_LABEL[b]} | {len(sub)} | "
+                    f"{sub['fav_min_wp'].mean():.3f} | "
+                    f"{sub['fav_n_dips_below_60'].mean():.2f} | "
+                    f"{sub['fav_midrange_roundtrips'].mean():.2f} | "
+                    f"{(sub['fav_midrange_roundtrips'] >= 1).mean()*100:.1f}% | "
+                    f"{win_rate_str} |"
+                )
+
+        _fav_bucket_table(combined, "All games")
+        _fav_bucket_table(combined[combined["abs_spread"] <= 6],
+                          "|spread| ≤ 6")
+
+        # Section 8: universe sizing + blended EV
+        rep.md_only("\n## 8. Favorite-side Strategy 3 universe sizing\n")
+
+        n_fav_rt_any = int((combined["fav_midrange_roundtrips"] >= 1).sum())
+        n_fav_covered = (
+            combined["fav_min_wp"].notna().sum()
+        )  # games with fav-side data
+        n_fav_res_win = int(combined["n_fav_res_win"].fillna(0).sum())
+        n_fav_res_loss = int(combined["n_fav_res_loss"].fillna(0).sum())
+        n_fav_completed = int(combined["n_fav_completed"].fillna(0).sum())
+
+        rep.md_only(
+            f"**Games covered** (non-pickem, ≥10 obs): {n_fav_covered} "
+            f"of {len(df)} processed.\n\n"
+            f"**Favorite-side round-trips** (entry ≤0.60, exit ≥0.70):\n\n"
+            f"- Games with ≥1 completed round-trip: **{n_fav_rt_any}** "
+            f"({n_fav_rt_any/n_fav_covered*100:.1f}% of covered).\n"
+            f"- Total completed round-trips: **{n_fav_completed}**.\n"
+            f"- Total resolution wins (backstop fired, favorite won): "
+            f"**{n_fav_res_win}**.\n"
+            f"- Total resolution losses (backstop fired, favorite lost): "
+            f"**{n_fav_res_loss}**.\n"
+            f"- Fav-win rate when held to resolution: "
+            f"**{n_fav_res_win / max(n_fav_res_win + n_fav_res_loss, 1) * 100:.1f}%**.\n"
+        )
+
+        # Blended EV: pool all net values across all positions
+        pool_nets: list[float] = []
+        for nets in fav_df["fav_net_list"]:
+            pool_nets.extend(nets)
+        if pool_nets:
+            pool = np.array(pool_nets)
+            rep.md_only(
+                f"\n**Blended EV per favorite-side position** "
+                f"(maker-maker, 100 contracts, pooled across all games "
+                f"with a triggering entry):\n\n"
+                f"- n positions: {len(pool)}\n"
+                f"- mean net: **${pool.mean():+.2f}**\n"
+                f"- median net: ${np.median(pool):+.2f}\n"
+                f"- p25 / p75: ${np.percentile(pool, 25):+.2f} / "
+                f"${np.percentile(pool, 75):+.2f}\n"
+                f"- stdev: ${pool.std():.2f}\n"
+                f"- fraction of positions with net > 0: "
+                f"{(pool > 0).mean()*100:.1f}%\n"
+            )
+
+        # Comparison: favorite vs underdog economics on the same games.
+        # Underdog side: midrange_roundtrips already computed (home +
+        # away dog perspectives). Use that for a side-by-side.
+        n_dog_rt_any = int((combined["midrange_roundtrips"] >= 1).sum())
+        rep.md_only(
+            "\n### Favorite vs underdog universe comparison\n\n"
+            "| Side | Games with ≥1 round-trip | "
+            "% of processed |\n"
+            "|------|-------------------------|"
+            "----------------|\n"
+            f"| Underdog (entry ≤0.35, exit ≥0.50, either side) | "
+            f"{n_dog_rt_any} | "
+            f"{n_dog_rt_any / len(df) * 100:.1f}% |\n"
+            f"| Favorite (entry ≤0.60, exit ≥0.70) | "
+            f"{n_fav_rt_any} | "
+            f"{n_fav_rt_any / n_fav_covered * 100:.1f}% (of covered) |"
+        )
+
+        rep.md_only(
+            "\n### ESPN caveat + favorite-side note\n\n"
+            "All favorite-side numbers above use ESPN WP as the signal. "
+            "Real-money markets compress +10-17pp relative to ESPN at "
+            "the tails; favorites at ESPN 0.70 are typically priced at "
+            "Kalshi ~0.65. In market terms, the entry threshold of "
+            "0.60 ESPN corresponds to roughly 0.55 on Kalshi, and the "
+            "exit of 0.70 ESPN to ~0.65 on Kalshi. This compresses "
+            "the completed-trip profit range (smaller $ per trade) "
+            "but also *increases* the resolution backstop value — "
+            "when you're buying at a lower effective Kalshi price, a "
+            "favorite win still settles at $1.00, so the resolution "
+            "profit grows relative to the active-exit profit. Net "
+            "effect: the mix of completed-vs-resolution outcomes on "
+            "real-money markets will differ from the ESPN projection "
+            "here. Tier 3 Odds API sportsbook-timeseries backfill is "
+            "the next validation gate.\n"
+        )
+
+        print(f"\nFavorite-side universe:")
+        print(f"  Games covered: {n_fav_covered} / {len(df)}")
+        print(f"  ≥1 fav round-trip: {n_fav_rt_any} "
+              f"({n_fav_rt_any/n_fav_covered*100:.1f}% of covered)")
+        print(f"  Resolution wins: {n_fav_res_win} | "
+              f"losses: {n_fav_res_loss}")
+        if pool_nets:
+            print(f"  Blended mean net (maker): ${pool.mean():+.2f} "
+                  f"over {len(pool)} positions")
 
     # Write report
     rep.write(OUTPUT_MD)

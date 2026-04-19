@@ -65,6 +65,14 @@ EXIT_DELTAS = [0.10, 0.15, 0.20]
 MID_ENTRY_THRESHOLDS = [0.30, 0.35, 0.40, 0.45]
 MID_EXIT_DELTAS = [0.10, 0.15]
 
+# Section 3D/3E: favorite-side scan. LAL was home-court favorite in
+# HOU-LAL, so LAL YES ticker = favorite-side contract. LAL won 107-98,
+# so any position held to resolution settles at $1.00.
+FAVORITE_SIDE = "LAL"
+FAVORITE_WON = True
+FAV_ENTRY_THRESHOLDS = [0.55, 0.60, 0.65]
+FAV_EXIT_DELTAS = [0.10, 0.15]
+
 # Strategy 3 entry-zone buckets (for spread + depth analysis)
 ENTRY_BUCKETS = [
     (0.0, 0.10, "≤ $0.10"),
@@ -304,6 +312,66 @@ def score_round_trip(trip: dict, contracts: int = 100) -> dict:
         "net_taker": gross - taker_total,
         "net_maker": gross - maker_total,
     }
+
+
+def score_favorite_trip(
+    trip: dict, contracts: int = 100, favorite_won: bool = True,
+) -> dict:
+    """Score a favorite-side trip. Completed round-trips use the same
+    score_round_trip path. Incomplete trips (still in position at game
+    end) are converted to 'resolution' outcomes: resolution_price = 1.00
+    if the favorite won, 0.00 if it lost. Entry fee charged; no exit
+    fee on resolution (contract self-settles).
+    """
+    if not trip.get("incomplete"):
+        scored = score_round_trip(trip, contracts=contracts)
+        scored["outcome"] = "completed"
+        return scored
+    resolution_price = 1.0 if favorite_won else 0.0
+    gross = (resolution_price - trip["entry_price"]) * contracts
+    entry_taker = taker_fee(contracts, trip["entry_price"])
+    entry_maker = maker_fee(contracts, trip["entry_price"])
+    outcome = "resolution_win" if favorite_won else "resolution_loss"
+    return {
+        **trip,
+        "resolution_price": resolution_price,
+        "gross": gross,
+        "taker_fees": entry_taker,
+        "maker_fees": entry_maker,
+        "net_taker": gross - entry_taker,
+        "net_maker": gross - entry_maker,
+        "outcome": outcome,
+        # Override exit_price so detail tables can display the
+        # effective exit (resolution settlement).
+        "exit_price": resolution_price,
+    }
+
+
+def scan_favorite_grid(
+    fav_side: pd.DataFrame,
+    entry_thresholds: list[float],
+    exit_deltas: list[float],
+    favorite_won: bool,
+    contracts: int = 100,
+) -> dict[tuple[float, float], list[dict]]:
+    """Apply find_round_trips + score_favorite_trip + compute_mae on
+    the favorite side only. Returns keyed trips where incomplete
+    trips become 'resolution' outcomes rather than being excluded."""
+    result: dict[tuple[float, float], list[dict]] = {}
+    for entry in entry_thresholds:
+        for delta in exit_deltas:
+            exit_thr = entry + delta
+            trips = find_round_trips(fav_side, entry, exit_thr)
+            scored = []
+            for tr in trips:
+                tr["side"] = FAVORITE_SIDE
+                st = score_favorite_trip(
+                    tr, contracts=contracts, favorite_won=favorite_won,
+                )
+                st = compute_mae(st, fav_side)
+                scored.append(st)
+            result[(entry, exit_thr)] = scored
+    return result
 
 
 def compute_mae(trip: dict, side: pd.DataFrame) -> dict:
@@ -816,6 +884,155 @@ def main() -> int:
         print(f"  Max drawdown:    ${dd.max():.3f} "
               f"({dd_pct.max()*100:.1f}% of entry)")
 
+    # ---- Section 3D: Favorite-side round-trip scan ----
+    print("\n=== Section 3D: Favorite-side round-trip scan ===")
+    rep.md_only(
+        "\n## 3D. Favorite-side round-trip scan (with resolution backstop)\n"
+    )
+    rep.md_only(
+        f"LAL was home-court favorite in HOU-LAL and won 107-98, so "
+        f"any LAL YES position held to settlement resolves at $1.00. "
+        f"Entry thresholds $0.55-$0.65 target favorite-side dips; "
+        f"if the dip recovers to the exit threshold, the trip is a "
+        f"completed round-trip (like Sections 3/3B). If the favorite "
+        f"never recovers and instead wins the game, the position "
+        f"settles at $1.00 — converting a 'missed exit' into an "
+        f"accidental bonus. If the favorite loses, the position "
+        f"settles at $0.00 and the trader takes a full-sized loss.\n"
+    )
+
+    fav_side = live_sides.get(FAVORITE_SIDE)
+    fav_trips_by_pair: dict[tuple[float, float], list[dict]] = {}
+    if fav_side is None or len(fav_side) == 0:
+        rep.md_only(f"\nFavorite side `{FAVORITE_SIDE}` not present — "
+                    "favorite-side analysis skipped.\n")
+    else:
+        fav_trips_by_pair = scan_favorite_grid(
+            fav_side, FAV_ENTRY_THRESHOLDS, FAV_EXIT_DELTAS,
+            favorite_won=FAVORITE_WON,
+        )
+
+        # Summary table: completed vs resolution outcomes
+        rep.md_only("\n### Summary — favorite-side grid\n")
+        rep.md_only(
+            "| Entry | Exit | Completed | Res wins | Res losses | "
+            "Mean net (maker, completed) | Mean net (resolution) |\n"
+            "|-------|------|-----------|----------|-------------|"
+            "-----------------------------|----------------------|"
+        )
+        for (entry, exit_thr), trips in fav_trips_by_pair.items():
+            completed = [tr for tr in trips if tr["outcome"] == "completed"]
+            res_win = [tr for tr in trips
+                       if tr["outcome"] == "resolution_win"]
+            res_loss = [tr for tr in trips
+                        if tr["outcome"] == "resolution_loss"]
+            mean_mk_c = (
+                f"${np.mean([t['net_maker'] for t in completed]):.2f}"
+                if completed else "—"
+            )
+            res_trips = res_win + res_loss
+            mean_res = (
+                f"${np.mean([t['net_maker'] for t in res_trips]):.2f}"
+                if res_trips else "—"
+            )
+            rep.md_only(
+                f"| {entry:.2f} | {exit_thr:.2f} | "
+                f"{len(completed)} | {len(res_win)} | {len(res_loss)} | "
+                f"{mean_mk_c} | {mean_res} |"
+            )
+            print(f"  ${entry:.2f} → ${exit_thr:.2f}  "
+                  f"completed={len(completed)}  "
+                  f"res_win={len(res_win)}  res_loss={len(res_loss)}")
+
+        # Detail table of every trip (completed + resolution)
+        rep.md_only(
+            "\n### All favorite-side trips (completed + resolution)\n"
+        )
+        rep.md_only(
+            "| entry ts | entry | exit/res ts | exit/res price | "
+            "hold (min) | gross | net (maker) | MAE drawdown | outcome |\n"
+            "|----------|-------|-------------|----------------|"
+            "-----------|-------|-------------|--------------|---------|"
+        )
+        # Collect unique trips across the grid for detail view.
+        # Since multiple (entry, exit) pairs can produce overlapping
+        # trips at the same entry price/time, tag by (entry_ts, entry_price,
+        # exit_thr) and dedup on entry_ts — the detail readers want to
+        # see each entry moment once per exit rule.
+        detail_rows = []
+        for (entry, exit_thr), trips in fav_trips_by_pair.items():
+            for tr in trips:
+                detail_rows.append((entry, exit_thr, tr))
+        detail_rows.sort(key=lambda x: (x[2]["entry_ts"], x[0], x[1]))
+        for entry_thr, exit_thr, tr in detail_rows:
+            rep.md_only(
+                f"| {pd.Timestamp(tr['entry_ts']).strftime('%H:%M:%S')}"
+                f" (@{entry_thr:.2f}→{exit_thr:.2f}) | "
+                f"{tr['entry_price']:.3f} | "
+                f"{pd.Timestamp(tr['exit_ts']).strftime('%H:%M:%S')} | "
+                f"{tr['exit_price']:.3f} | "
+                f"{tr['hold_sec']/60:.1f} | "
+                f"${tr['gross']:.2f} | ${tr['net_maker']:.2f} | "
+                f"${tr.get('mae_drawdown', 0):.3f} "
+                f"({tr.get('mae_drawdown_pct', 0)*100:.0f}%) | "
+                f"{tr['outcome']} |"
+            )
+
+    # ---- Section 3E: Dual-exit expected value ----
+    print("\n=== Section 3E: Dual-exit expected value ===")
+    rep.md_only(
+        "\n## 3E. Dual-exit expected value (favorite side)\n"
+    )
+    rep.md_only(
+        "For each entry threshold, pool positions entered at that level "
+        "under the tightest exit rule (+$0.10) and compute the blended "
+        "EV across completed round-trips and resolution outcomes. This "
+        "captures the value of the hold-to-resolution backstop: even "
+        "if the active-exit rule fails, a favorite win saves the "
+        "position, and a favorite loss destroys it.\n"
+    )
+    rep.md_only(
+        "| Entry | n_total | n_completed | n_res_win | n_res_loss | "
+        "Blended EV / trade (maker) |\n"
+        "|-------|---------|-------------|-----------|------------|"
+        "---------------------------|"
+    )
+    blended_rows = []
+    for entry in FAV_ENTRY_THRESHOLDS:
+        exit_thr = entry + 0.10
+        trips = fav_trips_by_pair.get((entry, exit_thr), [])
+        n_total = len(trips)
+        if n_total == 0:
+            rep.md_only(
+                f"| {entry:.2f} | 0 | 0 | 0 | 0 | — |"
+            )
+            continue
+        completed = [tr for tr in trips if tr["outcome"] == "completed"]
+        res_win = [tr for tr in trips if tr["outcome"] == "resolution_win"]
+        res_loss = [tr for tr in trips
+                    if tr["outcome"] == "resolution_loss"]
+        blended_ev = np.mean([tr["net_maker"] for tr in trips])
+        blended_rows.append({
+            "entry": entry, "n_total": n_total,
+            "n_completed": len(completed),
+            "n_res_win": len(res_win),
+            "n_res_loss": len(res_loss),
+            "blended_ev": float(blended_ev),
+        })
+        rep.md_only(
+            f"| {entry:.2f} | {n_total} | {len(completed)} | "
+            f"{len(res_win)} | {len(res_loss)} | ${blended_ev:.2f} |"
+        )
+        print(f"  entry ${entry:.2f}  n={n_total}  "
+              f"completed={len(completed)} "
+              f"res_win={len(res_win)} res_loss={len(res_loss)}  "
+              f"blended_EV=${blended_ev:.2f}")
+
+    best_blended = (
+        max(blended_rows, key=lambda r: r["blended_ev"])
+        if blended_rows else None
+    )
+
     # ---- Section 4: Spreads at entry zones ----
     print("\n=== Section 4: Spreads at entry zones ===")
     rep.md_only("\n## 4. Bid-ask spread at Strategy 3 entry price levels\n")
@@ -981,6 +1198,39 @@ def main() -> int:
         f"{_pass(median_mae_pct_all, '<', 0.50) if median_mae_pct_all is not None else 'Insufficient data'} |"
     )
 
+    # Favorite-side scorecard rows
+    # Best-pair completed count (max across grid)
+    fav_best_completed = 0
+    fav_best_key = None
+    for key, trips in fav_trips_by_pair.items():
+        completed = [tr for tr in trips if tr["outcome"] == "completed"]
+        if len(completed) > fav_best_completed:
+            fav_best_completed = len(completed)
+            fav_best_key = key
+    fav_blended_best = best_blended
+    if fav_best_key is not None:
+        fav_best_pair_str = (
+            f" at ({fav_best_key[0]:.2f}, {fav_best_key[1]:.2f})"
+        )
+    else:
+        fav_best_pair_str = ""
+    if fav_blended_best is not None:
+        fav_ev_val = fav_blended_best["blended_ev"]
+        fav_ev_str = (
+            f"${fav_ev_val:.2f} @ entry {fav_blended_best['entry']:.2f}"
+        )
+        fav_ev_status = _pass(fav_ev_val, ">=", 0.001)
+    else:
+        fav_ev_str = "n/a"
+        fav_ev_status = "Insufficient data"
+    rep.md_only(
+        f"\n| Favorite-side round-trips (best pair) | ≥ 1 | "
+        f"{fav_best_completed} completed{fav_best_pair_str} | "
+        f"{_pass(float(fav_best_completed), '>=', 1.0)} |\n"
+        f"| Favorite-side blended EV (best entry, maker) | > $0 | "
+        f"{fav_ev_str} | {fav_ev_status} |"
+    )
+
     print("\nViability scorecard (observed vs threshold):")
     print(f"  Swing magnitude ≥$0.10 median: "
           f"{f'${median_big_mag:.3f}' if median_big_mag else 'n/a'}")
@@ -996,6 +1246,12 @@ def main() -> int:
           f"{f'${mean_net_maker_mid:.2f}' if mean_net_maker_mid is not None else 'n/a'}")
     print(f"  MAE median: "
           f"{f'{median_mae_pct_all*100:.1f}% of entry' if median_mae_pct_all is not None else 'n/a'}")
+    print(f"  Fav-side best-pair completed: {fav_best_completed}"
+          f"{fav_best_pair_str}")
+    if fav_blended_best:
+        print(f"  Fav-side best blended EV (maker): "
+              f"${fav_blended_best['blended_ev']:.2f} "
+              f"@ entry {fav_blended_best['entry']:.2f}")
 
     # Write report
     rep.write(OUTPUT_MD)
