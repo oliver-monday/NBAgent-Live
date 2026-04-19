@@ -32,8 +32,12 @@ until research produces a validated strategy spec.** Progress:
    ≥5-10 games of live Kalshi data during 2026 playoffs. §1.4
    spread-anchoring analyses are runnable from existing ESPN data
    and may run in parallel.
-4. **Phase 4** — Live decision engine. Not scoped until 3B
-   validates a strategy spec.
+4. **Phase 4** — Live decision engine (rule-based trading bot;
+   no LLM inference, no live ML). Staged rollout planned:
+   signal alerts → paper trading → capped live → full. Core
+   loop, components, risks, and graduation structure documented
+   in `docs/ROADMAP_active.md`. Not scoped until 3B validates a
+   strategy spec.
 
 **Parallel track — Phase O:** Odds API integration planned (see
 `docs/ODDS_API_INTEGRATION.md`). Implementation queued for a
