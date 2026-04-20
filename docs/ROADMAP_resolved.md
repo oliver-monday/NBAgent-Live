@@ -151,3 +151,42 @@ reduction).
 
 Orderbook snapshot files removed from git tracking (backed up
 to personal cloud storage). Reduces repo storage footprint.
+
+## 2026-04-19 — Strategy 3 oscillation analysis: HOU-LAL
+
+First Kalshi oscillation characterization. Mid-range
+round-trips confirmed ($14.55/trade). Extreme-price grid
+produces zero trips — operating zone reframed to $0.35-$0.55.
+Favorite-side analysis added (positive on n=1 but later
+killed by FanDuel data).
+
+## 2026-04-19 — Game flow trajectory analysis (ESPN WP)
+
+Classified 1,234 games into 5 trajectory buckets. 75% of
+competitive games produce ≥1 mid-range round-trip. Comeback
+and Back-and-forth carry 84% of round-trips. Pre-game spread
+is a weak predictor (ρ ≈ -0.35). Favorite-side universe
+sized (68% of games, +$4.34 blended EV but high variance).
+
+## 2026-04-19 — Strategy 3 Odds API timeseries (n=15)
+
+FanDuel moneyline at 5-min intervals for 15 games. ESPN-to-
+market survival rate: 30.4%. Favorite-side killed (−$18.40
+blended net on FD data). Revised universe: ~689 market-price
+round-trips/season, ~$10K EV at 100-contract sizing.
+
+## 2026-04-20 — Kalshi historical trades probe
+
+Confirmed `/markets/trades` endpoint as a new unauthenticated
+data source. HOU-LAL: 93,838 trades, 29.2M contracts.
+100-contract orders are invisible in the flow (0.02% of
+5-min bucket volume). Strategy 3 zone ($0.35-$0.55) carries
+40.8% of total market volume.
+
+## 2026-04-20 — Strategy 3 multi-game oscillation (4/19 R1G1)
+
+4 games analyzed. ORL@DET (competitive): 21 swings ≥$0.10,
+2 round-trips at (0.40,0.50). Three blowouts: zero round-
+trips (expected for R1G1 seed matchups). Spread $0.01 across
+all 4 games. Cumulative: 2/10 competitive games toward
+graduation.

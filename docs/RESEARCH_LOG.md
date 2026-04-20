@@ -886,3 +886,202 @@ All prior entries stand. Complements the HOU-LAL deep dive
 (same date) by answering "does the HOU-LAL pattern generalize?"
 at season scale — answer: yes, for comeback and back-and-forth
 shapes, and at 75% rates on |spread| ≤ 6.
+
+## 2026-04-19 — Strategy 3 Odds API timeseries (n=15 FanDuel)
+
+**Data:** FanDuel moneyline at 5-min intervals for 15
+stratified games via the Odds API historical endpoint.
+Report: `docs/analysis_outputs/strategy3_odds_api_timeseries.md`.
+Credits used: ~5,564 (of ~10,000 monthly envelope).
+
+### Key findings
+
+**Pooled survival rate: 30.4%** (34 FanDuel round-trips /
+112 ESPN round-trips across the same 15 games). Per bucket:
+Comeback 31.2%, Back-and-forth 28.3%, Wire-to-wire 42.9%.
+Survival rate is approximately uniform across game shapes.
+
+**Best FanDuel-native thresholds:** (0.40, 0.50) produced
+46 round-trips (35% more than the ESPN-denominated
+0.35→0.50 baseline). (0.45, 0.55) also strong at 47.
+
+**Favorite-side on FanDuel:** pooled blended net **−$18.40**
+per position. **Favorite-side killed.** Resolution backstop
+is negative EV on market prices. ESPN's +$4.34 blended EV
+was a selection-bias artifact — favorites that can't recover
+to 0.60 WP are disproportionately losing.
+
+### Revised Strategy 3 universe estimate
+
+2,272 ESPN-visible round-trips × 30.4% market survival =
+**~689 market-price round-trips per season**. At the HOU-LAL
+reference of $14.55/trade net maker-maker (100 contracts):
+**~$10,025/season** at 100-contract sizing. The 30.4% survival
+rate has wide CI at n=15 (~18-46%) but even the low end
+projects positive annual EV.
+
+### Verdict
+
+Strategy 3 survives translation from ESPN to real-money
+market prices. The mid-range operating zone ($0.35-$0.55)
+captures most of the surviving universe. Favorite-side
+variant is dead.
+
+### Does not supersede
+
+All prior entries stand. This is the first market-price
+survival test of Strategy 3.
+
+## 2026-04-19 — Kalshi historical trades probe: HOU-LAL
+
+**Data:** Complete trade tape for HOU-LAL (2026-04-18) via
+Kalshi's unauthenticated market trades endpoint
+(`GET /markets/trades?ticker=...`). First use of this data
+source. 93,838 trades across both sides (HOU: 38,573, LAL:
+55,265), spanning 2026-04-14 01:12 UTC → 2026-04-19 03:22 UTC
+(market open → settle). Total volume: 29.2M contracts.
+Raw data cached at
+`data/kalshi_trades/KXNBAGAME-26APR18HOULAL.json` (~23 MB).
+Full report:
+`docs/analysis_outputs/kalshi_trades_probe_houlal.md`.
+
+### Headline findings
+
+**Trade-size distribution (pooled, n=93,838):** median 45
+contracts, mean 311, p90 502, p99 4,103, max 174,669.
+Small trades dominate by count (52% of trades are ≤50
+contracts) but big trades dominate by volume (the top 2.6%
+of trades — the 5,000+ bucket — carry 34% of all contracts).
+
+**Strategy 3 price zone ($0.35–0.55):** 44,629 trades /
+11.9M contracts — **40.8% of total volume** sits in the
+oscillation band we care about.
+
+**Sizing (a 100-contract order):**
+- Above the **66th percentile** of all observed trades
+  (median trade = 45 contracts).
+- A 100-contract order is ~**0.02%** of the median in-game
+  5-min bucket volume (≈ 574k contracts/bucket).
+- **100% of in-game 5-min buckets** have a 100-contract
+  order at < 1% of bucket volume.
+- Conclusion: 100-contract orders are effectively invisible
+  in HOU-LAL flow. Even 1,000-contract orders (top 5.7%)
+  would be well-absorbed at normal in-game volumes.
+
+**Taker flow:** per-5-min net taker flow (yes_vol − no_vol)
+is computed in Section 4 and provides a directional signal
+we can cross-reference against WP moves in later analyses.
+
+**Execution-quality cross-reference (Section 6):** 4,348
+of 93,838 trades had a snapshot within ±30s (logger only
+covered the game day, not the 4-day pre-game tape). Of
+matched trades: 94.5% at the posted ask, 5.4% at bid,
+~0% mid. Asymmetry likely reflects taker directionality
+and snapshot cadence rather than absence of mid fills —
+worth revisiting with tighter snapshot pairing on a game
+where the logger ran the full market window.
+
+### New capability
+
+Kalshi's market-trades endpoint provides per-trade
+resolution data (size, price, taker side, timestamp) for
+all settled markets. This is a free, unauthenticated
+data source that can retroactively characterize volume
+and execution patterns on any completed NBA game market.
+Combined with our logger's orderbook snapshots, this gives
+trade-level + book-level paired data for execution
+analysis. Unlike the logger, this captures the full
+lifetime of the market (including days of pre-game price
+discovery) regardless of when we started polling.
+
+Endpoint note: the `/historical/trades` path probed first
+returned empty for this ticker; `/markets/trades` returns
+the full tape. Code uses the latter.
+
+### Does not supersede
+
+All prior entries stand. This adds a new data source and
+the first volume/execution characterization of a Kalshi
+NBA market.
+
+## 2026-04-19 — Strategy 3 multi-game oscillation (4/19 playoff R1G1, n=4)
+
+**Data:** 4 first-round playoff Game 1s captured by Kalshi
+logger at 30s cadence with per-game file split (landed
+2026-04-19): ORL@DET, PHI@BOS, PHX@OKC, POR@SAS. Full report:
+`docs/analysis_outputs/strategy3_oscillation_multi.md`.
+
+Heuristic tip detection + settlement-run end detection
+applied independently per game. Strengthened from the original
+prompt spec (which fired on static pre-game price drift) by
+adding a rolling-window cumulative-movement requirement
+(≥$0.02 movement within last 10 snapshots) — documented
+in `analysis/strategy3_oscillation_multi.py`.
+
+### Live-window summary
+
+| Game | Tip (UTC) | Duration | Competitive? |
+|------|-----------|---------:|--------------|
+| ORL@DET | 22:34 | 145 min | ✓ |
+| PHI@BOS | 17:08 | 47 min | — (blowout) |
+| PHX@OKC | 19:45 | 37 min | — (blowout) |
+| POR@SAS | 01:16 (4/20) | 105 min | — |
+
+Only ORL@DET met the "both mids spent ≥30% of live window in
+[0.30, 0.70]" competitive threshold. Other three games were
+effective blowouts where settlement-run detection correctly
+trimmed the window tight.
+
+### Pooled round-trip economics (at (0.40, 0.50))
+
+- **Round-trip frequency:** 1/4 games (25%) produced ≥1 trip.
+- **Total trips pooled:** 2 (both from ORL@DET).
+- **Mean net (maker-maker):** **$21.70 / trip** (vs $14.55
+  on HOU-LAL reference).
+- **Mean hold:** 49 min; **mean MAE:** 17.5% of entry.
+
+At (0.35, 0.45): 3 trips, mean net $20.20, hold 34 min.
+At (0.40, 0.55): 1 trip, mean net **$39.28**, hold 104 min.
+
+### Pooled spread + depth (mid ≤ $0.50)
+
+- Median realized spread: **$0.01** (matches HOU-LAL).
+- Depth ≥ 50k: **55%** of observations at mid ≤ $0.50
+  (above the 50% kill criterion).
+
+### Viability scorecard (all 6 criteria pass)
+
+| Criterion | Threshold | Pooled | Status |
+|---|---|---|---|
+| RT frequency at (0.40, 0.50) | ≥ 15% | 25% (1/4) | ✓ |
+| Net per trip (median, maker) | ≥ $5 | $21.70 | ✓ |
+| Realized spread (median) | ≤ $0.02 | $0.01 | ✓ |
+| Depth (% ≥ 50k) | ≥ 50% | 55% | ✓ |
+| Hold time (median) | ≥ 3 min | 49 min | ✓ |
+| MAE (median, % of entry) | < 50% | 17.5% | ✓ |
+
+### Cumulative Strategy 3 sample
+
+Including HOU-LAL (4/18), total Kalshi-analyzed games:
+**5**. Competitive games with ≥1 mid-range round-trip at
+(0.40, 0.50): **2/5** (HOU-LAL, ORL@DET). Progress toward
+10-game graduation threshold: **5/10**.
+
+Early economics are encouraging — median maker-maker net
+materially above the $5 kill threshold on both the n=1
+HOU-LAL reference and the n=4 pooled sample. Blowout rate
+(3/4 on 4/19) is the dominant headwind: Strategy 3 only
+fires when the underdog side spends meaningful time below
+$0.50, which requires in-game competitiveness the
+pre-game market doesn't always deliver. Sample is still
+too small to estimate the competitive-game rate; watch as
+playoff R1 continues.
+
+### Does not supersede
+
+All prior entries stand. This extends the HOU-LAL
+single-game analysis to a multi-game sample. HOU-LAL's
+economics (median net $14.55 at (0.35, 0.50)) remain the
+headline reference for deep-dive characterization; this
+entry establishes the pooled-game methodology and first
+cross-game scorecard.

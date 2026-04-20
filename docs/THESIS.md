@@ -57,22 +57,40 @@ risk the $0.10 cost, payoff up to $1.00.
   kill pending Phase 3B confirmation.**
 - Validation requires paired (Kalshi price, game state) data — the
   core purpose of Phase 1's live logging.
+- **Preliminary kill issued 2026-04-19.** Sportsbook backfill
+  established that Kalshi/sportsbooks price underdog moments
+  at +10-17pp above ESPN. The +3pp ESPN-vs-actual residual is
+  entirely absorbed. Formal kill pending Phase 3B confirmation.
 
-### 3. Active position management
+### 3. Active position management (swing trading)
 
-Buy cheap during one team's run, sell when the market swings back —
-without waiting for game resolution. Profits come from price
-oscillation rather than directional accuracy.
+Buy cheap during one team's run, sell when the market swings
+back — without waiting for game resolution. Profits come from
+price oscillation rather than directional accuracy.
 
 - Edge **sidesteps the calibration question** — works regardless
   of whether Kalshi's model is well-calibrated, as long as prices
   swing enough to cover costs and spreads.
+- **Operating zone is $0.35-$0.55** (mid-range competitive
+  prices), not the extreme-price zone ($0.10-$0.20) originally
+  hypothesized. Extreme prices indicate decided games with no
+  bounce-back.
+- **Per-trade economics validated on Kalshi (n=2 games):**
+  $14-25 net per round-trip (maker-maker, 100 contracts).
+  Hold times 8-100 min (median ~30 min). Spread $0.01.
+- **Universe estimated at ~689 market-price round-trips per
+  season** (from 30.4% ESPN-to-FanDuel survival rate applied
+  to 2,272 ESPN round-trips in competitive games).
+- **Favorite-side variant killed.** Negative EV at market
+  prices (−$18.40 blended net on FanDuel data). Resolution
+  backstop fires into losses 84% of the time.
 - Highest ceiling of the three strategies, highest execution
-  demands. Requires reading game flow well enough to time exits
-  before momentum reverses.
-- Natural extension of bilateral convergence — both exploit
-  volatility, but active management monetizes partial swings that
+  demands. Requires monitoring game flow well enough to time
+  entries and exits.
+- Natural complement to bilateral convergence — both exploit
+  volatility, but swing trading monetizes partial swings that
   convergence misses.
+- **Assessment document:** `docs/strategy3_assessment.md`.
 
 ## What this project is not
 

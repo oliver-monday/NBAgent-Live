@@ -14,19 +14,28 @@
   at (0.25, 0.35) entry prices, Strategy 1 opportunity rate
   validation on Kalshi data, Strategy 3 oscillation
   characterization.
-- **Strategy 3 scoping** — swing-trading analysis on
-  accumulated Kalshi price oscillation data. Priority
-  elevated given Strategy 1 marginal status and Strategy 2
-  preliminary kill. Needs: entry/exit rule framework,
-  round-trip frequency, swing magnitude distribution,
-  hold-time analysis.
-  - HOU-LAL deep dive complete (n=1), mid-range re-run done.
-    See `docs/analysis_outputs/strategy3_oscillation_houlal.md`.
-  - Game flow trajectory analysis complete (ESPN WP, N=1,234).
-    See `docs/analysis_outputs/strategy3_game_flow_trajectories.md`.
-  - Favorite-side analysis added to both HOU-LAL and game flow
-    trajectory scripts (game flow via `--include-favorite` flag;
-    default behavior unchanged).
+- **Strategy 3 scoping — active priority.** Swing-trading
+  analysis on Kalshi price oscillation data.
+  - HOU-LAL deep dive (n=1): mid-range round-trips confirmed,
+    $14.55/trade maker-maker. Extreme-price grid produces zero
+    trips. Operating zone is $0.35-$0.55.
+  - Game flow trajectories (ESPN, N=1,234): 75% of competitive
+    games produce ≥1 mid-range round-trip. Comeback and
+    Back-and-forth buckets carry 84% of round-trips.
+  - Odds API timeseries (n=15 FanDuel): 30.4% ESPN-to-market
+    survival rate. ~689 market-price round-trips/season.
+  - Favorite-side: **killed** (negative EV at market prices).
+  - Multi-game Kalshi (4/19 R1G1, n=4): ORL@DET confirmed
+    oscillation. 3 blowouts as expected for R1G1 seeds.
+  - Kalshi trades probe (HOU-LAL): 93,838 trades, sizing is
+    not a constraint (100 contracts = 0.02% of bucket volume).
+  - Strategy 3 assessment document: `docs/strategy3_assessment.md`.
+  - **Graduation threshold: 10 competitive Kalshi games.
+    Current progress: 2/10.** Continue accumulating via logger
+    during playoff games.
+  - Next: run `strategy3_oscillation_multi.py` on each night's
+    games as they complete. Generalize trades probe to
+    additional games.
 - **§1.4 retirement analyses** — three spread-anchoring tests.
   Deprioritized: the strategy-relevant question (how does
   Kalshi behave at the tails?) is now answered directly by

@@ -22,31 +22,41 @@ We are in research phase. **Do not build agent/frontend infrastructure
 until research produces a validated strategy spec.** Progress:
 
 1. **Phase 1** — Live Kalshi orderbook capture. Confirmed
-   working. Running locally (GitHub Actions deactivated to
-   conserve minutes). Per-game file split landed 2026-04-19.
+   working. Running locally (GitHub Actions deactivated).
+   Per-game file split landed 2026-04-19.
 2. **Phase 2** — ESPN PBP + WP historical grounding. Complete
    for 2025-26 regular season (1,234 / 1,243 games usable).
 3. **Phase 3** — Analysis.
    - Phase 3A done (ESPN-only bilateral + calibration).
    - Phase 3B smoke test done (n=4 usable paired games).
-     Key finding: Kalshi and sportsbooks compress relative to
-     ESPN by +10-17pp at the tails.
-   - Sportsbook backfill done (57 dip observations). ESPN is
-     the outlier, not Kalshi.
-   - Strategy 1 recalibrated: (0.25, 0.35) optimal, 17.7%
-     rate, $6.55 EV/game — marginal.
-   - Strategy 2 preliminary kill signal issued.
-   - **Next: Strategy 3 scoping** (swing-trading on Kalshi
-     oscillation data) — elevated priority.
-   - Phase 3B formal (≥10 games) still needed for realized
-     spreads and Strategy 3 characterization.
+   - Sportsbook backfill done (57 dip observations).
+   - Strategy 1 recalibrated: marginal ($6.55 EV/game).
+   - Strategy 2 preliminary kill issued.
+   - **Strategy 3 scoping — active priority:**
+     - HOU-LAL deep dive (n=1 Kalshi): 5 mid-range
+       round-trips, $14.55 net/trade maker-maker.
+     - Game flow trajectories (N=1,234 ESPN): 75% of
+       competitive games produce mid-range round-trips.
+     - Odds API timeseries (n=15 FanDuel): 30.4% ESPN-to-
+       market survival rate. ~689 market-price round-trips
+       per season estimated.
+     - Favorite-side analysis: killed (negative EV on
+       market prices).
+     - Multi-game Kalshi (4/19 R1G1, n=4): 1 competitive
+       game (ORL@DET) confirmed oscillation pattern.
+     - Kalshi historical trades probe: 93,838 trades on
+       HOU-LAL. 100-contract orders are invisible (0.02%
+       of 5-min bucket volume). Sizing is not a constraint.
+     - Strategy 3 assessment document written. Graduation
+       threshold: 10 competitive Kalshi games. Current: 2/10.
+   - Phase 3B formal (≥10 games) still needed.
 4. **Phase 4** — Live decision engine. Not scoped until
    Phase 3 produces a validated strategy spec.
 
-**Parallel track — Phase O:** Odds API integration planned (see
-`docs/ODDS_API_INTEGRATION.md`). Implementation queued for a
-fresh session. Adds US sportsbook pricing as a consensus benchmark
-independent of ESPN.
+**Parallel track — Phase O:** Odds API integration partially
+executed (sportsbook backfill + timeseries scrape consumed
+~6,200 credits). Live scraper (Phase O1) deprioritized —
+the backfill and timeseries answered the load-bearing questions.
 
 See `docs/ROADMAP_active.md` for current open items.
 
@@ -170,6 +180,17 @@ workflows.
   filtering. If discovery returns zero markets on a day we know
   games exist, the candidate list probably needs expanding — but
   confirm with a manual probe first.
+- **Historical Trades endpoint** (`GET /markets/trades`
+  with ticker filter) returns the complete trade tape for
+  any market: trade_id, ticker, count_fp (contracts),
+  yes_price_dollars, taker_side, created_time. Unauthenticated.
+  Paginated (limit=1000, cursor). Confirmed working on
+  HOU-LAL (93,838 trades, 29.2M contracts). Use for
+  retroactive volume/execution analysis on any completed
+  game. Note: the `/historical/trades` endpoint returned
+  empty for recent NBA markets; `/markets/trades` with the
+  same params works — documented in
+  `analysis/kalshi_trades_probe.py`.
 
 ## Memory scope reminder
 

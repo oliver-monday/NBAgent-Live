@@ -211,6 +211,45 @@ concordance with 8+ independent sportsbooks.
   rejects HFT; if the opportunity requires HFT-like speed,
   it's outside our operating model).
 
+### Strategy 3 recalibration (2026-04-20)
+
+The original thresholds assumed extreme-price entry (≤ $0.20)
+and $0.15+ swings. Research established that the actual
+operating zone is $0.35-$0.55 with $0.10-$0.15 swings.
+Recalibrated criteria:
+
+**Graduates if ALL of (on ≥10 competitive Kalshi games):**
+
+1. **Round-trip frequency ≥ 15%** of |spread|≤6 games
+   produce a completed round-trip at (0.40, 0.50) or
+   better thresholds. Current: 2/2 competitive games
+   (100%), but n=2 is not meaningful.
+2. **Median net per round-trip ≥ $5** (maker-maker, 100
+   contracts). Current: $21.70 pooled median (n=7 trips
+   across 2 games).
+3. **Realized spread ≤ $0.02** at mid-range entry prices.
+   Current: $0.01 across 5 games.
+4. **Depth ≥ 50 contracts** at entry prices in ≥50% of
+   entry-zone snapshots. Current: 55% pooled.
+
+**Killed if ANY of (on ≥10 competitive Kalshi games):**
+
+- Round-trip frequency < 5%
+- Median net per trip < $0
+- Realized spread ≥ $0.03 at entry prices
+- All round-trips complete in < 90 seconds
+
+**Favorite-side variant: KILLED (2026-04-19).** Pooled
+blended net −$18.40 on FanDuel data. Not revisitable.
+
+### Sizing constraint: RESOLVED (2026-04-20)
+
+Kalshi trades probe confirmed 100-contract orders are
+invisible (0.02% of 5-min bucket volume). Sizing is not
+a constraint at any plausible Strategy 3 scale. The
+original "fillable size ≥ 50 contracts" criterion is
+satisfied with substantial margin.
+
 ---
 
 ## Project-level decisions

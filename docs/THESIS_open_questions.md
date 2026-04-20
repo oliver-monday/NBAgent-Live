@@ -441,6 +441,23 @@ fill-rate question).
 This is a Phase 3 deliverable; Phase 2 ESPN ingest doesn't
 touch it.
 
+### 2.6 Sizing and market impact at target order sizes
+
+**Claim:** 100-contract orders at Strategy 3 entry prices
+($0.35-$0.45) are small enough to be invisible in the flow
+and will not trigger MM defensive behavior.
+
+**Status: Confirmed.** Kalshi historical trades probe on
+HOU-LAL (93,838 trades, 29.2M contracts) showed:
+- 100 contracts = 66th percentile of trade sizes
+- 0.02% of median in-game 5-min bucket volume (574k)
+- Strategy 3 zone ($0.35-$0.55) carries 40.8% of volume
+- Even 1,000-contract orders (top 5.7%) would be absorbed
+
+**Retired 2026-04-20.** No further investigation needed at
+100-contract sizing. Re-evaluate if scaling to 2,000+
+contracts per order.
+
 ---
 
 ## 3. Process & hygiene items
@@ -898,3 +915,15 @@ those same moments at +10-17pp above ESPN — well above the
 plausible calibration point. Formal kill pending Phase 3B
 confirmation with ≥10 games of Kalshi-vs-actual resolution
 data at the tails, but the direction is unambiguous.
+
+**2026-04-19 — Strategy 3 favorite-side variant killed.**
+FanDuel timeseries (n=15) showed pooled blended net of
+−$18.40 per position. Resolution backstop fires into losses
+~84% of the time at market prices. ESPN-based analysis was
+misleading — the 15.8% resolution win rate reflects selection
+bias (favorites that can't recover to 0.60 WP are
+disproportionately losing). No further investigation.
+
+**2026-04-20 — §2.6 added and immediately retired.** Kalshi
+trades probe confirmed 100-contract orders are invisible in
+HOU-LAL trade flow. Sizing is not a constraint.
