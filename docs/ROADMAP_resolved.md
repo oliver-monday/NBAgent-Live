@@ -190,3 +190,39 @@ data source. HOU-LAL: 93,838 trades, 29.2M contracts.
 trips (expected for R1G1 seed matchups). Spread $0.01 across
 all 4 games. Cumulative: 2/10 competitive games toward
 graduation.
+
+## 2026-04-20 — Timeout execution window analysis
+
+`analysis/timeout_execution_analysis.py`. Paired Kalshi
+trade tape with ESPN PBP timeouts. Confirmed timeout windows
+as favorable execution environments (2.3× depth, $0.01
+spread floor, 1.5× volume). Confirmed NOT a directional
+signal. 20 timeouts across HOU-LAL + ORL@DET.
+
+## 2026-04-20 — Scoring-run trajectory analysis (Kalshi, n=2)
+
+`analysis/scoring_run_trajectories.py`. Score-to-price
+impact mapping: 3-pointer = $0.04/3.5s, 2-pointer =
+$0.017/4.1s, impact peaks in $0.40-$0.50 zone. Post-
+timeout price trajectory: null at fixed checkpoints (n=5
+run-stopping timeouts, too thin to conclude). ESPN PBP
+for ORL@DET (4/19) scraped as part of this analysis.
+
+## 2026-04-20 — ESPN-scale scoring-run pattern catalog
+
+`analysis/espn_scoring_run_catalog.py`. Full-season (549
+competitive games) run detection, timeout association,
+post-run WP recovery, prior degradation, favorite/underdog
+asymmetry. Key findings: 89% of runs bounce back (max
+recovery); 52% at fixed 3-min checkpoint. Favorites recover
+3-6pp more often and ~1.5 min faster. Timeouts don't help
+recovery (51% vs 53% without). Q1 best period for recovery
+(59%). Prior dissolves over first half of game.
+
+## 2026-04-20 — STRATEGY3_SPEC.md created
+
+Living strategy spec document created. Consolidates all
+Strategy 3 findings into a single entry-rule / exit-rule /
+execution-preferences / graduation-status reference.
+Supersedes `docs/strategy3_assessment.md` as the primary
+spec document.

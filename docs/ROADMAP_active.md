@@ -15,27 +15,33 @@
   validation on Kalshi data, Strategy 3 oscillation
   characterization.
 - **Strategy 3 scoping — active priority.** Swing-trading
-  analysis on Kalshi price oscillation data.
+  analysis on Kalshi price oscillation data. Living spec:
+  `docs/STRATEGY3_SPEC.md`.
   - HOU-LAL deep dive (n=1): mid-range round-trips confirmed,
-    $14.55/trade maker-maker. Extreme-price grid produces zero
-    trips. Operating zone is $0.35-$0.55.
+    $14.55/trade maker-maker. Operating zone is $0.35-$0.55.
   - Game flow trajectories (ESPN, N=1,234): 75% of competitive
-    games produce ≥1 mid-range round-trip. Comeback and
-    Back-and-forth buckets carry 84% of round-trips.
+    games produce ≥1 mid-range round-trip.
   - Odds API timeseries (n=15 FanDuel): 30.4% ESPN-to-market
     survival rate. ~689 market-price round-trips/season.
-  - Favorite-side: **killed** (negative EV at market prices).
+  - Favorite-side to resolution: **killed** (−$18.40 blended).
   - Multi-game Kalshi (4/19 R1G1, n=4): ORL@DET confirmed
-    oscillation. 3 blowouts as expected for R1G1 seeds.
-  - Kalshi trades probe (HOU-LAL): 93,838 trades, sizing is
-    not a constraint (100 contracts = 0.02% of bucket volume).
-  - Strategy 3 assessment document: `docs/strategy3_assessment.md`.
+    oscillation. 3 blowouts expected for R1G1 seeds.
+  - Kalshi trades probe: sizing resolved (100 contracts
+    invisible at 0.02% of bucket volume).
+  - Timeout execution windows (HOU-LAL + ORL@DET): confirmed
+    as execution quality enhancer (2.3× depth, $0.01 spread
+    floor). NOT a directional signal.
+  - Score-to-price impact (n=2 Kalshi): 3-pointer moves market
+    $0.04 in 3.5s, impact peaks in $0.40-$0.50 zone.
+  - ESPN scoring-run catalog (N=549 competitive games): 89% of
+    runs produce some bounce-back. Favorites recover 3-6pp
+    more often than underdogs. Q1 runs reverse most reliably
+    (59%). Timeouts do not improve recovery rates.
   - **Graduation threshold: 10 competitive Kalshi games.
     Current progress: 2/10.** Continue accumulating via logger
     during playoff games.
   - Next: run `strategy3_oscillation_multi.py` on each night's
-    games as they complete. Generalize trades probe to
-    additional games.
+    games as they complete.
 - **§1.4 retirement analyses** — three spread-anchoring tests.
   Deprioritized: the strategy-relevant question (how does
   Kalshi behave at the tails?) is now answered directly by

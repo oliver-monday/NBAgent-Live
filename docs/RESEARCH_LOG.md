@@ -1085,3 +1085,568 @@ economics (median net $14.55 at (0.35, 0.50)) remain the
 headline reference for deep-dive characterization; this
 entry establishes the pooled-game methodology and first
 cross-game scorecard.
+
+## 2026-04-19 — Timeout execution window analysis (n=2, HOU-LAL + ORL@DET)
+
+**Data:** ESPN PBP timeout events joined to Kalshi
+`/markets/trades` tape and logger orderbook snapshots on
+wall-clock timestamps. 20 timeouts across two games
+(HOU-LAL: 11, ORL@DET: 9). 187,987 trades, 1,208 in-game
+snapshots. 100 bootstrapped baseline windows per game
+(live-play, non-overlapping with any timeout). Report:
+`docs/analysis_outputs/timeout_execution_analysis.md`.
+
+### What we measured
+
+For each 90s window (timeout = [T, T+90s]; baseline =
+randomly sampled live-play): trade count, contracts, mean
+trade size, mean bid-ask spread from snapshots, yes-price
+range / std / drift, mean bid and ask depth (`*_size_fp`).
+Pooled across games.
+
+### Pooled headline numbers
+
+| Metric | Timeout | Baseline | Ratio |
+|---|---:|---:|---:|
+| Trades per window | 825 | 690 | 1.20× |
+| Contracts per window | 339k | 224k | 1.51× |
+| Mean spread ($) | 0.0101 | 0.0107 | 0.94× |
+| Mid drift ($) | 0.21 | 0.15 | 1.35× |
+| Mean bid depth (fp) | 290k | 126k | 2.30× |
+| Mean ask depth (fp) | 453k | 248k | 1.83× |
+
+Pooled: volume concentrates in timeout windows, spread
+tightens marginally, depth dramatically deepens
+(2.3× bid, 1.83× ask), but mid-drift is **higher** than
+baseline (1.35×). Three of four thesis-relevant dimensions
+point toward calmer execution; drift points the other way.
+
+### After-run split: the real signal
+
+"After-run" = one team outscored the other by ≥ 6 points
+in the 120s before the timeout. Only **2 of 20 timeouts**
+qualified (both HOU-LAL). These show a categorically
+different profile:
+
+| Metric | After-run (n=2) | Baseline | Ratio |
+|---|---:|---:|---:|
+| Contracts per window | 818k | 224k | **3.64×** |
+| Mean spread ($) | 0.0100 | 0.0107 | 0.93× |
+| Price range ($) | 0.33 | 0.40 | 0.83× |
+| Mid drift ($) | 0.010 | 0.153 | **0.07×** |
+| Mean bid depth (fp) | 318k | 126k | 2.52× |
+
+The book dramatically settles in the 90s after a stop-the-
+run timeout: mid-drift collapses to 7% of baseline while
+volume triples and depth doubles. This is the pattern the
+original thesis predicted — the pooled view diluted it by
+including routine end-of-quarter / mandatory TV-break
+timeouts that don't stop anything.
+
+### Thesis status
+
+**Partially supported, pending more games.** The after-run
+cut is the correct operational signal, but n=2 after-run
+timeouts is well below the bar for making a rule out of
+it. The pooled 20-timeout result shows the expected
+direction on volume/spread/depth but not on drift — drift
+is contaminated by mid-run timeouts where the move is
+still resolving into price.
+
+Identifying which timeouts are "after-run" requires live
+ESPN PBP access at the time of decision. The existing PBP
+scraper is post-game — Phase 4 would need an online-PBP
+adapter (same endpoint, higher cadence) to make this rule
+actionable. Not a blocker for the research; is a dependency
+for operationalization.
+
+### Implications for Strategy 3 entry rule
+
+- **Do not use generic "post-timeout" as an entry trigger.**
+  The pooled signal is too diluted by routine timeouts.
+- **Consider "after-scoring-run" as the real signal** —
+  define run as ≥6-point differential in a 2-min window,
+  then enter maker orders in the 60-90s after the ensuing
+  timeout. Needs 8-10 more games of after-run observations
+  to size effect with any precision.
+- **Depth 2.3× baseline** means the queue-position cost
+  rises during timeouts. At maker pricing, that's the right
+  tradeoff — slower fill for better price discipline.
+- **Spread tightening (0.94×) is small** and likely lost
+  in noise; not load-bearing for the entry rule.
+
+### Does not supersede
+
+All prior entries stand. This is the first timeout-window
+characterization. Status: under review — headline pooled
+numbers weak, after-run cut strong but n=2.
+
+## 2026-04-19 — Scoring-run trajectory analysis (n=2 games, 5 run-stopping timeouts)
+
+**Data:** ESPN PBP + Kalshi trade tape joined on wallclock for
+HOU-LAL (4/18) and ORL@DET (4/19). 227 scoring plays with
+trade-tape coverage; 20 timeouts; 5 classified as run-stopping
+(≥4-point margin in ≥120s lookback). Report:
+`docs/analysis_outputs/scoring_run_trajectories.md`.
+
+### Part A — Score-to-price impact
+
+Per-basket impact on the scoring team's YES contract (pooled):
+
+| Play type | n | Immediate (+10s) | Full (+60s) | Reaction lag |
+|---|---:|---:|---:|---:|
+| 2-pointer | 108 | +$0.0167 | +$0.0235 | 4.1 s |
+| 3-pointer | 41 | +$0.0400 | +$0.0349 | 3.5 s |
+| Free throw | 77 | +$0.0062 | +$0.0053 | 19.9 s |
+
+**Execution budget is ~3-4 seconds** between a basket landing
+and the market absorbing half its impact on 2s/3s. Free throws
+lag ~20s — the market waits to see the full sequence. A 3-pointer
+moves the scoring team's price ~4× more than a free throw.
+
+### Part B — Post-timeout trajectory (run-stopping, n=5)
+
+Trailing team's YES-price change after play resumes from a
+run-stopping timeout:
+
+| Metric | Mean | Median | % positive |
+|---|---:|---:|---:|
+| Recovery @ 1 min | +$0.020 | $0.000 | 40% |
+| Recovery @ 3 min | +$0.036 | −$0.010 | 40% |
+| Recovery @ 5 min | +$0.030 | −$0.010 | 40% |
+| **Max recovery** | **+$0.090** | **+$0.090** | **80%** |
+| Time to max (s) | — | 186 | — |
+
+The fixed-checkpoint signal is too noisy at n=5 to anchor an
+entry rule. The **max-recovery signal is directionally clean**
+(80% of timeouts saw *some* price bounce within 5 min, mean
+magnitude +$0.090), but the magnitude and timing vary enough
+that a simple "hold 3 min then exit" rule captures less than
+half the bounce on average.
+
+### Part C — Run-detection parameter sweep
+
+| (margin, lookback) | Run-stopping n | Mean rec @ 3 min | % positive |
+|---|---:|---:|---:|
+| (4, 120s) | 4 | +$0.048 | 50% |
+| (4, 180s) | 4 | +$0.055 | 50% |
+| (6, 120s) | 2 | $0.000 | 50% |
+| (6, 180s) | 3 | −$0.003 | 33% |
+| (8, 240s) | 3 | −$0.003 | 33% |
+
+Best set — `(4, 120s)` and `(4, 180s)` — peaks at 50% positive
+@ 3 min, below the 55% threshold for a rule. Tighter run
+definitions (≥6 or ≥8 points) do not improve the hit rate at
+this sample size.
+
+### Thesis status
+
+**Null result at n=5 run-stopping timeouts.** The momentum-
+reversal thesis is not supported by the post-timeout recovery
+signal at 3-minute fixed checkpoints. Two pieces complicate
+drawing a strong conclusion:
+
+1. **Max-recovery is 80% positive at +$0.090 mean** — the
+   price does bounce, just with variable timing. A time-
+   adaptive exit (sell at peak within 5 min rather than at
+   a fixed 3-min checkpoint) would capture most of this.
+   The current data doesn't support calibrating that exit
+   rule either.
+2. **n=5 is structurally thin.** 4 of the 5 came from a
+   single game (ORL@DET). Need more run-stopping timeouts
+   before the signal can be distinguished from noise.
+
+### Connection to Strategy 3
+
+Feeds the graduation thesis at the mechanism level. Strategy 3
+at (0.40, 0.50) entry has already shown +$21.70 mean net /
+trade on n=7 pooled round-trips — that is the operational
+evidence. This analysis tested whether the *entry moment* can
+be sharpened by using timeout-after-run as a trigger. At n=5
+the answer is "not yet" — continue using price-level triggers
+and collect more timeout-trajectory observations in parallel.
+
+### Implications for entry rule refinement
+
+- **Per-basket price impact is real and measurable.** A 3-pointer
+  dropping the trailing team by +$0.04 on their opponent's YES
+  (equivalently, −$0.04 on trailing team's YES) is exactly the
+  dip Strategy 3 wants to buy. This is the ex-ante mechanism
+  that has to be true for the strategy to work, and it is.
+- **Timeout-as-trigger is not yet usable.** 50% hit rate on
+  directional recovery means the strategy should not lean on
+  "we saw a timeout, therefore buy." The current (0.40, 0.50)
+  price-level rule is mechanism-agnostic and captures swings
+  regardless of their proximate cause.
+- **Budget for execution ~3-4 seconds** after a scoring play
+  before the market absorbs half the impact. Manual execution
+  is marginal; an automated signal engine needs to act
+  inside this window.
+
+### Does not supersede
+
+All prior entries stand. Adds mechanism-level characterization
+and a null result on the timeout-as-trigger variant. Strategy 3
+graduation progress unchanged at 2/10 competitive Kalshi games.
+
+## 2026-04-19 — ESPN-scale scoring-run pattern catalog (N=549 competitive games)
+
+**Data:** Full 2025-26 regular season ESPN PBP + WP. Filter:
+|spread| ≤ 6 (549 / 1,243 games). Report:
+`docs/analysis_outputs/espn_scoring_run_catalog.md`. Complements
+the n=2 Kalshi-level `scoring_run_trajectories.py` at 600×
+scale using ESPN WP as the yardstick.
+
+**ESPN CAVEAT (important).** ESPN WP is +10-17pp more reactive
+than real-money markets at the tails per Phase 3B sportsbook
+backfill. Absolute magnitudes here are upper bounds on what
+Kalshi would show. Relative patterns transfer; absolute
+recovery sizes will compress on market prices.
+
+### What we measured
+
+Scoring runs (5-parameter sweep), timeout association within
+90s of game time, post-run WP trajectories at
++1/+2/+3/+5-min checkpoints + max recovery in 5 min, prior
+degradation (underdog lead persistence at Q1/half/Q3/6:00 Q4),
+and favorite vs underdog dip recovery across five thresholds.
+
+### Headline numbers (primary params: margin ≥ 6, window ≤ 3 min)
+
+**Run frequency:** 6,210 runs / 549 games = **11.3 runs per
+competitive game**. 100% of games have ≥1 run at this threshold.
+
+**Timeout association:** Only **36% of runs** are followed by
+a timeout within 90s of game time (66% of those are called by
+the trailing team). Most runs don't trigger a timeout — they're
+either absorbed into the flow of play or end a quarter. **The
+"timeout reliably follows a run" premise is weaker than the
+thesis assumed.**
+
+**Trailing-team recovery:**
+
+| Checkpoint | Mean WP delta | Median | % positive | n |
+|---|---:|---:|---:|---:|
+| +1 min | +0.017 | +0.005 | 55% | 6,085 |
+| +3 min | **+0.023** | +0.004 | **52%** | 5,818 |
+| +5 min | +0.025 | +0.003 | 52% | 5,563 |
+| Max (in 5 min) | **+0.120** | **+0.084** | **89%** | 6,210 |
+
+**Fixed 3-min checkpoints are noisy (52% positive).** But the
+*max* recovery within 5 min is **89% positive** at mean +0.12
+WP — i.e., the book essentially always bounces, just with
+variable timing (median 138s to peak).
+
+### Favorite vs underdog trailing (prior-anchoring test)
+
+| Group | n | % positive @ 3min | Mean max rec |
+|---|---:|---:|---:|
+| Favorite trailing | 2,947 | 54% | +0.125 |
+| Underdog trailing | 3,263 | 50% | +0.116 |
+
+Gap at fixed checkpoints is thin (4pp). **But the asymmetry
+shows cleanly in dip recovery:**
+
+**Favorite dip → recovery above 0.50**
+
+| Threshold | % recover | Median time | Game-win % |
+|---|---:|---:|---:|
+| < 0.45 | 91% | 1.9 min | 50% |
+| < 0.40 | 84% | 3.5 min | 47% |
+| < 0.35 | 76% | 6.0 min | 41% |
+| < 0.30 | 68% | 7.9 min | 38% |
+| < 0.25 | 60% | 9.0 min | 34% |
+
+**Underdog dip → recovery above 0.50**
+
+| Threshold | % recover | Median time | Game-win % |
+|---|---:|---:|---:|
+| < 0.45 | 84% | 4.7 min | 39% |
+| < 0.40 | 79% | 5.9 min | 37% |
+| < 0.35 | 73% | 7.6 min | 35% |
+| < 0.30 | 64% | 9.3 min | 31% |
+| < 0.25 | 54% | 11.2 min | 27% |
+
+**Favorites recover faster and more often from every dip
+threshold.** At <0.45 the gap is 7pp and the recovery time is
+2.5× faster (1.9 min vs 4.7 min). This is the prior-anchoring
+mechanism observable at season scale — the WP model anchors
+near the pre-game prior, so a favorite's dip mean-reverts up
+toward ~0.50+ faster than an underdog's dip does.
+
+### Timeouts do not help recovery
+
+| Context | % positive @ 3min | Mean max rec |
+|---|---:|---:|
+| Run + timeout | 51% | +0.120 |
+| Run, no timeout | 53% | +0.120 |
+
+Timeouts are correlated with runs (36% of runs, 66% by the
+trailing team when present) but they don't measurably improve
+the trailing team's post-run recovery. Runs reverse at similar
+rates regardless.
+
+### Prior-acceptance inflection point
+
+Underdog leading at checkpoint → underdog wins the game:
+
+| Checkpoint | n leading | Win rate |
+|---|---:|---:|
+| End Q1 | — | 54% |
+| Halftime | — | 63% |
+| End Q3 | — | 73% |
+| 6:00 Q4 | — | 79% |
+
+At Q1 end, an underdog leading has only a 54% chance of
+winning — the prior is still weighing heavily. By 6:00 Q4, the
+prior has dissolved (79% conversion). This is the window where
+the market lags game state the most — the first half.
+
+### Strongest-signal run contexts
+
+- **Best run magnitude:** 6-7 points (53% positive @ 3min) —
+  marginal edge over larger runs
+- **Best period:** Q1 (59% positive @ 3min)
+- Larger runs (10+) and later quarters do *not* improve
+  recovery rates; if anything they signal the deficit is real
+
+### Thesis status
+
+**Partially supported.** The prior-anchoring asymmetry
+(favorites recover faster/more often than underdogs from any
+given dip) is the cleanest signal in the catalog — a ~5pp edge
+at each threshold, with 2-3× faster recovery times. This
+supports Strategy 3 prioritizing games where the pre-game
+favorite falls behind.
+
+**Partially denied.** The "timeout-stops-the-run" mechanism is
+weak at ESPN scale: only 36% of runs trigger a timeout, and
+timeouts don't improve recovery rates. The entry rule should
+not key off of timeouts.
+
+**Fixed-checkpoint recovery at 52-54%** is thin for an entry
+rule. The **max-recovery-in-5-min at 89% positive** is the
+cleaner directional signal — but that's an outcome, not an
+actionable exit rule (can't know peak in advance). A smart
+exit rule would need to trail the price upward; a fixed
+3-min hold captures only half the bounce.
+
+### ESPN caveat re-stated
+
+All recovery magnitudes above are ESPN WP. Kalshi recovery
+will be **10-17pp smaller in absolute terms** at the tails.
+The 91% favorite-dip-recovery at <0.45 ESPN WP may be 60-70%
+at Kalshi <0.45. The relative favorite-vs-underdog asymmetry
+should transfer; the absolute rates won't.
+
+### Strategy 3 implications
+
+- **Prioritize games where the pre-game favorite falls behind.**
+  That's where the ESPN-scale prior-anchoring signal is
+  strongest, and the mechanism transfers to market prices
+  with smaller magnitude.
+- **Do not use timeouts as an entry trigger.** Only 36% of
+  runs trigger timeouts; recovery rates are identical with
+  and without.
+- **Entry rule should continue to be price-level** (the
+  (0.40, 0.50) maker-maker rule), not event-triggered
+  (scoring-run-plus-timeout).
+- **Exit rule needs to be adaptive**, not fixed. Max recovery
+  in 5 min is 89% positive — but at variable timing
+  (median 138s to peak, long tail). A trailing-stop exit
+  would capture more of the bounce than a fixed 3-min hold.
+  Designing that exit rule is a future item.
+
+### Cumulative sample posture
+
+Kalshi-level sample unchanged: 2/10 competitive games toward
+graduation. ESPN-scale catalog validates the mechanism at
+season scale and prioritizes *which* game contexts are most
+productive to collect Kalshi data on (favorite-trailing,
+|spread| ≤ 6, mid-game).
+
+### Does not supersede
+
+All prior entries stand. Extends the scoring-run analysis
+chain: (1) Kalshi trade-to-price (n=2, mechanism confirmed),
+(2) ESPN game-flow trajectories (N=1,234, which shapes
+oscillate), (3) this entry (N=549 competitive, which runs
+produce recovery). Each layer informs a different piece of
+the entry-rule design.
+
+## 2026-04-20 — Timeout execution window analysis (HOU-LAL + ORL@DET)
+
+**Script:** `analysis/timeout_execution_analysis.py`
+**Report:** `docs/analysis_outputs/timeout_execution_analysis.md`
+
+Paired Kalshi trade tape timestamps with ESPN PBP timeout events
+to measure whether NBA timeouts create favorable execution
+windows. 20 timeouts across 2 games (HOU-LAL 11, ORL@DET 9),
+compared to 100 bootstrapped 90-second baseline windows per game.
+
+### Key findings
+
+**Depth is the headline:** Bid depth 2.30× baseline, ask depth
+1.83× baseline during timeout windows. Market participants pile
+resting orders onto the book during stoppages. Spread at $0.01
+floor in 19 of 20 timeouts (vs occasional widening during live
+play).
+
+**Volume concentrates:** 1.20× trade count, 1.51× contract
+volume. Larger mean trade size (1.18×). Consistent with
+institutional/informed flow entering during known price windows.
+
+**Price stability is mixed:** Range 1.14×, std 1.25×, drift
+1.35× — all "worse" than baseline. But this is selection bias:
+timeouts are called during volatile moments, and the 90-second
+window starting at the whistle includes the tail of the price
+move that triggered the timeout.
+
+**After-run timeouts (n=2) show the settlement pattern:**
+Mid drift drops to 0.07× baseline (effectively zero) in the
+two timeouts following ≥6-point runs. Price moved before the
+timeout, then stopped. The run-detection threshold (≥6 in 120s)
+was too tight — only 2 of 20 timeouts qualified.
+
+### Verdict
+
+Timeout windows are confirmed as favorable execution
+environments (depth, spread). They are NOT directional signals
+(tested separately in the scoring-run trajectory analysis).
+The entry rule should treat timeouts as execution opportunities,
+not triggers.
+
+## 2026-04-20 — Scoring-run trajectory analysis (HOU-LAL + ORL@DET, Kalshi)
+
+**Script:** `analysis/scoring_run_trajectories.py`
+**Report:** `docs/analysis_outputs/scoring_run_trajectories.md`
+
+Kalshi-level score-to-price impact mapping and post-timeout
+price trajectory measurement on 2 games with full data
+alignment (ESPN PBP wallclock → Kalshi trade tape timestamps).
+
+### Part A: Score-to-price impact
+
+Per-basket price impact on Kalshi (pooled, n=226 scoring plays):
+- 3-pointer: +$0.040 immediate (10s), median lag 3.5s
+- 2-pointer: +$0.017 immediate, median lag 4.1s
+- Free throw: +$0.006, median lag 19.9s (low information)
+
+Impact peaks in $0.40-$0.50 zone at $0.024/play — Strategy 3's
+operating zone is where individual baskets matter most to the
+market. Impact tapers at extremes (≤$0.30: $0.015, >$0.70:
+$0.013).
+
+Execution budget for reactive entries: 3-4 seconds between
+basket and full market reaction. Tight but nonzero. Maker
+orders (resting before the event) bypass this constraint.
+
+### Part B: Post-timeout trajectory (n=5 run-stopping timeouts)
+
+Null result at fixed checkpoints: 40-50% positive recovery at
+3 min, below the 55% threshold for a directional rule. n=5 is
+too thin to confirm or retire. Max recovery was positive in 4
+of 5 (80%), suggesting bounces happen but on unpredictable
+timing. ORL@DET Q3 9:35 showed +$0.23 recovery (DET favorite
+dipping to $0.48). HOU@LAL Q4 7:57 showed no recovery (HOU at
+$0.05 — too far gone, outside the operating zone).
+
+### Part C: Run detection sweep
+
+(4, 120s) and (4, 180s) produced the best recovery signal at
+50% positive (n=4). Tighter thresholds reduced sample too
+aggressively. Deferred to ESPN-scale analysis for statistical
+power.
+
+### Does not supersede
+
+All prior entries stand. This establishes the per-basket price
+conversion factor and the post-timeout trajectory framework.
+The ESPN-scale catalog (next entry) provides the sample size
+this analysis lacked.
+
+## 2026-04-20 — ESPN-scale scoring-run pattern catalog (N=1,234 games)
+
+**Script:** `analysis/espn_scoring_run_catalog.py`
+**Report:** `docs/analysis_outputs/espn_scoring_run_catalog.md`
+
+Full-season (549 competitive games, |spread| ≤ 6) analysis of
+scoring runs, timeout association, post-run WP trajectories,
+prior degradation, and favorite/underdog recovery asymmetry.
+
+**ESPN caveat:** All magnitudes are ESPN WP, which is +10-17pp
+more reactive than Kalshi at the tails. Directional patterns
+should transfer; absolute magnitudes will be smaller on Kalshi.
+
+### Run frequency
+
+At (6-point margin, 3-min window): 6,210 runs across 549 games
+(11.3 runs/game). 100% of competitive games produce ≥1 run.
+Scoring runs are ubiquitous — they are the normal rhythm of NBA
+basketball, not rare events.
+
+### Timeout association
+
+36% of runs followed by a timeout within 90 seconds of game
+time. Of those, 66% called by the trailing team. Timeout
+association is frequent but not reliable as a signal.
+
+### Post-run recovery: the base rate
+
+At 3-min fixed checkpoint: 52% positive recovery (barely above
+coin flip). But max recovery within 5 minutes is positive 89%
+of the time, mean +0.12 WP. Median time to max recovery: 138s.
+
+**Interpretation:** Runs almost always produce some bounce-back,
+but the timing is unpredictable. This supports Strategy 3's
+price-threshold-based entry/exit over any time-based rule.
+
+### Favorite vs underdog asymmetry: confirmed, modest
+
+Post-run recovery at 3 min: favorites 54% positive vs
+underdogs 50%. Recovery from dips below 0.35 WP: favorites
+76% vs underdogs 73%. Favorites recover ~1.5 min faster at
+every threshold. The asymmetry is real but thin (3-6pp range).
+
+### Timeouts do NOT help recovery: confirmed
+
+Runs followed by timeout: 51% positive at 3 min.
+Runs without timeout: 53% positive.
+Delta: −2pp. At n=6,210 this is definitive. Timeouts are
+execution windows, not recovery signals. This finding
+settled the timeout-as-signal hypothesis.
+
+### Period effects
+
+Q1 runs reverse at 59% (best). Q4 at 44% (worst). The
+pre-game prior is strongest early; by Q4 the game state
+dominates. Strategy 3 entries are more reliable in Q1/Q2.
+
+### Run magnitude sweet spot
+
+6-7 point runs: 53% positive. 13+ point runs: 43%.
+Moderate runs are the best entry context. Large runs more
+often represent genuine separation.
+
+### Prior degradation roadmap
+
+Underdog leads at checkpoints → eventual win rate:
+End Q1: 54%, Halftime: 63%, End Q3: 73%, 6:00 Q4: 79%.
+The prior takes a full half to dissolve. The Q1-halftime
+window is where market dislocation from game reality
+should be largest.
+
+### Strategy 3 implications
+
+The entry rule should remain price-based. Contextual
+modifiers (favor the favorite, prefer early-game entries,
+don't wait for massive runs) provide modest edge
+improvements. Timeouts are execution windows only.
+Full synthesis in `docs/STRATEGY3_SPEC.md`.
+
+### Does not supersede
+
+All prior entries stand. This provides the statistical
+foundation that the n=2 Kalshi-level analyses lacked.
+The two analysis layers complement: ESPN for patterns
+at scale, Kalshi for market-price validation.

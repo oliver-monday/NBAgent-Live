@@ -49,6 +49,10 @@ until research produces a validated strategy spec.** Progress:
        of 5-min bucket volume). Sizing is not a constraint.
      - Strategy 3 assessment document written. Graduation
        threshold: 10 competitive Kalshi games. Current: 2/10.
+     - STRATEGY3_SPEC.md created as living spec document.
+       Entry rule: price-based (bid ≤ $0.40), contextual
+       modifiers (favor favorite, prefer Q1/Q2, moderate
+       runs). Timeout = execution window, not signal.
    - Phase 3B formal (≥10 games) still needed.
 4. **Phase 4** — Live decision engine. Not scoped until
    Phase 3 produces a validated strategy spec.
@@ -205,6 +209,10 @@ memory as starting from the first session's context.
   doc: active mid-flight threads, pending operator actions, watchlist
   items for session start, micro-state nuance. Supplements (doesn't
   replace) RESEARCH_LOG / ROADMAP. Updated at end of each session.
+- `docs/STRATEGY3_SPEC.md` — **living Strategy 3 rule spec.**
+  Current best-guess entry/exit rules, execution preferences,
+  operating parameters, and graduation status. The primary
+  deliverable of Phase 3. Supersedes `docs/strategy3_assessment.md`.
 - `docs/THESIS.md` — long-term project thesis and framing.
 - `docs/RESEARCH_LOG.md` — current findings, what has and hasn't
   been validated yet.
