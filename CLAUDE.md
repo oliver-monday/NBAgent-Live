@@ -180,6 +180,10 @@ memory as starting from the first session's context.
 
 ## Pointers
 
+- **`docs/SESSION_CONTEXT.md` — READ FIRST.** Working-memory handoff
+  doc: active mid-flight threads, pending operator actions, watchlist
+  items for session start, micro-state nuance. Supplements (doesn't
+  replace) RESEARCH_LOG / ROADMAP. Updated at end of each session.
 - `docs/THESIS.md` — long-term project thesis and framing.
 - `docs/RESEARCH_LOG.md` — current findings, what has and hasn't
   been validated yet.
