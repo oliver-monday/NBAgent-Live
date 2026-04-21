@@ -226,3 +226,193 @@ Strategy 3 findings into a single entry-rule / exit-rule /
 execution-preferences / graduation-status reference.
 Supersedes `docs/strategy3_assessment.md` as the primary
 spec document.
+
+## 2026-04-20 — WP vs Kalshi paired analysis: script + four-game study
+
+New analysis script `analysis/wp_vs_kalshi_paired.py`. Repeatable
+per-game study pairing ESPN win probability timeseries with Kalshi
+historical trade prices. Favorite-centric reference frame. 30s
+VWAP bins + event-driven scoring-play alignment. Outputs structured
+markdown report + paired CSVs for cross-game aggregation.
+
+Validated on 4 games (POR@SAS, ORL@DET, HOU@LAL, MIA@CHA).
+Six findings documented in RESEARCH_LOG. Key results: Kalshi
+always compresses toward $0.50 vs ESPN (delta peaks at +9pp in
+0.20-0.40 WP zone); convergence R² = 0.463 for competitive games
+vs 0.000 for upsets; ESPN reacts 1.8-18× more per basket than
+Kalshi depending on WP zone; zone entry lead direction depends
+on game context (not always ESPN-first). OT thrillers diverge
+rather than converge — Kalshi can't reprice fast enough in
+final-possession games.
+
+## 2026-04-20 — Ticker matcher + batch + aggregation infrastructure
+
+Three-file build-out for scaled WP vs Kalshi analysis:
+- `analysis/ticker_matcher.py`: matches ESPN game IDs to Kalshi
+  event tickers via date + team parsing. Outputs joined CSV.
+  Supports --max-spread and --sample filters.
+- `analysis/wp_vs_kalshi_paired.py`: added --batch flag for
+  multi-game runs. Auto-caches, skips per-game reports in batch
+  mode, resumes interrupted batches. Single-game mode unchanged.
+- `analysis/wp_vs_kalshi_aggregate.py`: pools paired CSVs across
+  games. Sections: delta by WP zone with CIs, convergence by
+  spread bucket, scoring-play reaction ratios, S3 zone stats,
+  timeout delta stability, per-game summary table.
+
+## 2026-04-21 — Strategy 3 spec update + graduation evaluation
+
+Updated STRATEGY3_SPEC.md with production-grade calibration from
+168-game WP vs Kalshi paired analysis: compression curve by WP zone
+(+8.30pp in 0.20-0.40, −2.73pp in 0.80-1.00), convergence dynamics,
+per-basket reaction confirmation. Added convergence-zone exit
+preference (1–3 min remaining = optimal exit window). Updated
+timeout evidence to Kalshi-confirmed (p=8.5e-08).
+
+New script `analysis/strategy3_graduation_eval.py`: formal
+graduation scorecard against KILL_CRITERIA thresholds. Runs
+round-trip detection on 168-game paired timeseries at 5 grids.
+Reports RT frequency, economics, hold time, entry period,
+exit timing, bilateral entry frequency, and formal verdict.
+
+## 2026-04-21 — Failed entry & worst-case distribution analysis
+
+New script `analysis/strategy3_failed_entries.py`. Tracks every
+entry event at the Strategy 3 threshold across 165 competitive
+games. Measures completion rate, fail rate, true EV per entry
+(including losses), MAE distribution, period and spread effects
+on failure, and worst-case scenarios. Produces entry-level CSV
+for downstream risk analysis.
+
+Headline finding: true blended EV per entry is −$4.57 (60.9%
+complete at +$15.49 mean, 39.1% fail at −$35.82 mean).
+Graduation verdict is revised — the 100%-profitable-completed-
+RT finding was a subset statistic; full-entry EV is negative.
+Strategy 3 requires stop-loss or selective-entry refinement
+before Phase 4a.
+
+## 2026-04-21 — Stop-loss sweep & position management
+
+New script `analysis/strategy3_stoploss_sweep.py`. General-purpose
+replay engine parameterized by entry/exit/stop-loss/avg-in/partial-
+exit configurations. Sweeps 20 stop-loss levels on 165 competitive
+games (422 entries, 597 with re-entry under tighter stops). Tests
+averaging-in and partial exit strategies. Reports optimal
+configuration with annual EV, false-stop rate, and context
+breakdowns.
+
+Finding: no risk-management variant produces positive EV. Best
+combined config (stop $0.34 + avg-in $0.35) is −$1,175 annual EV
+vs −$5,963 baseline. Entry signal must be made selective
+(period / spread / side filters) before Phase 4a can unlock.
+
+## 2026-04-21 — Upside capture & trailing stop simulation
+
+New script `analysis/strategy3_upside_capture.py`. Extended
+replay engine with split positions: partial exit at first profit
+target, trailing stop on held remainder, hold-to-resolution
+option. 96-config grid search across initial stop × scale-out
+ratio × trailing stop distance. Produces strategy comparison
+table showing evolution from naive to optimized configuration.
+
+Best configuration found: stop $0.34, sell 25% at $0.50, hold
+75% to resolution, no trailing stop. Annual EV −$852 (vs −$5,963
+naive, −$1,175 previous best). Still negative. Every variant of
+risk-management and upside-capture mechanics tested is negative.
+Selective entry filters are the next required research step
+before Phase 4a can unlock.
+
+## 2026-04-21 — Entry filter analysis
+
+New script `analysis/strategy3_entry_filters.py`. Tests four
+entry filters (oscillation lookback, ESPN WP momentum, favorite-
+side, period restriction) individually and in combination on
+165 competitive games. 32-config combined grid search with both
+simple and upside-capture exit strategies. Filter diagnostic
+measuring precision/recall on recoverable vs terminal dips.
+
+**First positive-EV result in the Strategy 3 chain.** Eight
+of 32 combined configurations are positive. Best by mean P&L:
+WP(120s/3pp) + Fav + Period(Q1-Q2) + upside exit → +$3.41/entry,
++$578 annual EV, 21.6% win rate, 5.37× win/loss ratio. Best by
+annual EV: WP + Period + upside → +$725 annual at 152 entries.
+Combined with bilateral Strategy 1: **+$2,186 total annual EV**.
+Phase 4a unlock path identified; selective-entry spec ready for
+SESSION_CONTEXT handoff.
+
+## 2026-04-21 — Strategy 4 dip-recovery analysis
+
+New script `analysis/strategy4_dip_recovery.py`. Three-part
+analysis on 165 competitive games from the 168-game paired
+dataset. Part 1: false-summit analysis (at each price $0.50-$0.99,
+what fraction of games that traded there had the favorite lose).
+Part 2: favorite dip-recovery sweep (1,200 configs: lookback ×
+dip depth × entry zone × exit target × stop-loss). Part 3:
+underdog run-capture sweep (~160 swing + 10 hybrid configs:
+momentum vs static entry, swing vs hybrid exit). Part 4:
+cross-strategy comparison table (S1/S3/S4A/S4B).
+
+Distinct from Strategy 3: entry at $0.50-$0.75 (not $0.40),
+exit before resolution at $0.80-$0.95 (not $0.50), buying the
+favorite's natural buoy during temporary underdog runs rather
+than buying into genuine market doubt.
+
+Runtime: ~11 seconds (precomputed trailing max/min per lookback,
+then swept configs). Results pending review — RESEARCH_LOG entry
+deferred per prompt.
+
+## 2026-04-21 — Strategy 4 prior-weighting analysis
+
+Extended `analysis/strategy4_dip_recovery.py` with Part 5:
+prior-weighting / dip-below-prior analysis. Bins S4A entries
+by gap between pre-game Kalshi price and entry price. Tests
+prior-anchor thesis: entries deeper below the pre-game price
+should recover more reliably. Sweeps min-dip-below-prior
+filter across 9 thresholds, applies best filter to top 5
+S4A configs, and briefly tests underdog-side mirror.
+
+## 2026-04-21 — Strategy 4A position management study
+
+Extended `analysis/strategy4_dip_recovery.py` with Part 6:
+averaging-in/out analysis on best S4A config (180s / $0.08 /
+$0.50–$0.75 / $0.90 / $0.40). Six averaging-in configs
+(50/50 at various add-on depths, triple tranche, conviction
+build), seven averaging-out configs (partial exits at $0.80–
+$0.95 ladders), four combined configs. Tests whether position
+management can convert some of the 47% stop-outs into smaller
+losses or partial wins.
+
+Null result: every variant underperformed the Config A/G
+baseline. Best non-baseline combined config was −$1,463 worse.
+Fee multiplication (each tranche pays its own maker fee),
+undersized wins (add-on doesn't always fire, leaving 50-contract
+positions), and new partial-then-stop loss mode compound to
+erode EV. The Phase 4a operational spec remains 100 contracts
+at initial trigger, one exit at $0.90 or stop at $0.40.
+
+## 2026-04-21 — Strategy 3 holdout validation
+
+New script `analysis/strategy3_holdout_validation.py`.
+Train/test split (110/55 games, seed=42) of the S3 entry
+filter grid search. 32 configs swept on train set, top
+configs evaluated on held-out test set. 6-seed stability
+analysis (seeds 42–47) to assess robustness. S4A best
+config run on same split as consistency check. Produces
+formal VALIDATED / CURVE-FIT verdict for S3 filtered
+strategy.
+
+**Result: VALIDATED (4 of 6 seeds).** Best test-set config
+is wp+fav+period/upside exit at +$4.35/entry, +$825 annual
+EV on held-out sample. The three top-by-train-P&L configs
+all showed positive test-set mean P&L on seed=42.
+S4A cross-reference shows strong consistency (train
++$3.19, test +$4.24). Combined projection S1 + S3 + S4A
+= **$+4,667/year** on test-half estimates.
+
+## 2026-04-21 — STRATEGY4_SPEC.md created
+
+Living strategy spec document for Strategy 4. Consolidates
+dip-recovery analysis (Parts 1–6), prior-weighting results,
+position management conclusions, false-summit exit analysis,
+period/spread effects, and annual EV projections into a single
+actionable reference. Companion to STRATEGY3_SPEC.md. CLAUDE.md
+pointers updated.

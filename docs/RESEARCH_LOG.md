@@ -1650,3 +1650,343 @@ All prior entries stand. This provides the statistical
 foundation that the n=2 Kalshi-level analyses lacked.
 The two analysis layers complement: ESPN for patterns
 at scale, Kalshi for market-price validation.
+
+## 2026-04-20 — WP vs Kalshi paired analysis infrastructure
+
+Landed `analysis/wp_vs_kalshi_paired.py`: repeatable per-game
+study of ESPN WP vs Kalshi trade price relationship. Favorite-
+centric. 30-second VWAP bins + event-driven scoring-play
+alignment. Tests convergence hypothesis (|delta| → 0 near
+resolution), compression pattern by WP zone, and Strategy 3
+zone mapping. Timeout windows flagged for execution quality
+analysis. First target: POR@SAS Game 1 (401869194 /
+KXNBAGAME-26APR19PORSAS). No findings yet — script implemented
+but not yet run.
+
+## 2026-04-20 — WP vs Kalshi paired analysis: four-game findings
+
+**Script:** `analysis/wp_vs_kalshi_paired.py` (landed this session).
+**Games analyzed:**
+
+| Game | Date | |Spread| | Outcome | Kalshi trades | Type |
+|------|------|---------|---------|---------------|------|
+| POR@SAS | 4/19 | 10.5 | Chalk (SAS 111-98) | 50,838 | Blowout |
+| ORL@DET | 4/19 | 8.5 | Upset (ORL 112-101) | 94,149 | One-directional upset |
+| HOU@LAL | 4/18 | 2.5 | Upset (LAL 107-98) | 93,838 | Competitive |
+| MIA@CHA | 4/14 | 5.5 | Chalk (CHA 127-126 OT) | 126,407 | OT thriller |
+
+### Finding 1: Kalshi is always the more moderate voice
+
+Kalshi compresses toward $0.50 relative to ESPN WP regardless
+of direction. When ESPN is bullish on the favorite, Kalshi is
+less bullish. When ESPN gets bearish, Kalshi is less bearish.
+
+Delta by WP zone (favorite-centric, pooled across 4 games):
+
+| WP zone | Mean Δ (Kalshi − ESPN) | N obs | Δ > 0 % |
+|---------|----------------------|-------|---------|
+| 0.00-0.20 | +2.7pp | 189 | 84% |
+| 0.20-0.40 | +9.3pp | 206 | 98% |
+| 0.40-0.60 | +6.3pp | 238 | 95% |
+| 0.60-0.80 | +0.6pp | 237 | 57% |
+| 0.80-1.00 | +0.4pp | 352 | 46% |
+
+Pattern: delta peaks in the 0.20-0.40 zone (Kalshi +9pp above
+ESPN) and shrinks toward zero at the extremes. This is the
+compression pattern from Phase 3A confirmed on paired intra-game
+data for the first time.
+
+### Finding 2: Convergence depends on game type
+
+| Game | R² (|Δ| ~ time) | Slope | Final 2 min |Δ| |
+|------|-----------------|-------|-------------|
+| HOU@LAL (competitive) | **0.463** | −0.000029 | 0.83pp |
+| POR@SAS (blowout) | 0.077 | −0.000005 | 0.90pp |
+| ORL@DET (upset) | 0.000 | +0.000001 | 0.45pp |
+| MIA@CHA (OT thriller) | 0.086 | **+0.000016** | **9.04pp** |
+
+Convergence is strongest in competitive games (R² = 0.463 for
+HOU@LAL). Blowouts converge weakly. Upsets don't converge
+linearly (delta explodes mid-game then snaps back). OT
+thrillers actively diverge — ESPN WP swings faster than Kalshi
+can reprice, producing growing delta in the final minutes.
+
+Working hypothesis: "ESPN WP is a true anchor that Kalshi tends
+toward as resolution approaches" holds for games that resolve
+before the final minute. In games decided on the final
+possession (MIA@CHA), Kalshi's market structure imposes a
+speed limit that prevents convergence.
+
+### Finding 3: ESPN WP reacts more per basket than Kalshi
+
+Per-scoring-play reaction comparison (favorite-centric):
+
+| WP zone | ESPN reaction | Kalshi reaction | ESPN/Kalshi ratio |
+|---------|-------------|----------------|------------------|
+| 0.00-0.20 | +9.25pp | +0.50pp | 18.5× |
+| 0.20-0.40 | +2.5pp | −0.2pp | divergent |
+| 0.40-0.60 | −0.9pp | −0.5pp | 1.8× |
+| 0.60-0.80 | −0.3pp | −0.3pp | 1.0× |
+| 0.80-1.00 | −0.5pp | −0.4pp | 1.3× |
+
+ESPN reacts most extremely at WP tails. At extreme WP
+(0.00-0.20), ESPN moves 18× more per basket than Kalshi.
+In the Strategy 3 operating zone (0.40-0.60 from the
+underdog's perspective), ESPN moves ~1.8× more.
+
+Implication: price-based entry on Kalshi is correct over
+model-based entry on ESPN WP. ESPN would generate too many
+false signals from per-basket overreaction.
+
+### Finding 4: Zone entry lead varies by game context
+
+| Game | Pre-game Δ | Who entered S3 zone first | Lead |
+|------|-----------|--------------------------|------|
+| ORL@DET | −0.4pp | ESPN | 240s |
+| HOU@LAL | +7.3pp | Simultaneous | 0s |
+| MIA@CHA | −3.6pp | Kalshi | 2,250s |
+
+ESPN leads into the zone when a strong prior is being violated
+(upset from outside). Kalshi leads when it starts skeptical of
+the favorite. For pick'em games, both enter simultaneously.
+
+Practical implication: monitor both feeds; enter on whichever
+crosses the threshold first. Do not hard-code which one leads.
+
+### Finding 5: Timeouts remain delta-neutral (with a crunch-time caveat)
+
+Across 3 of 4 games, mean delta at timeouts ≈ overall mean
+delta. Timeouts are not convergence or divergence events.
+
+Exception: MIA@CHA crunch-time timeouts (Q4 final 30 seconds)
+showed delta swinging ±14pp between consecutive timeouts. In
+games decided on the final possession, timeout windows are
+moments of maximum delta instability. The execution-quality
+finding (better depth/spread) may still hold, but the *price
+level* during crunch-time timeouts is unreliable as fair value.
+
+### Finding 6: Strategy 3 zone time correlates with competitiveness
+
+| Game | |Spread| | S3 zone time | % of game |
+|------|---------|-------------|-----------|
+| HOU@LAL | 2.5 | 5,070s | 54.7% |
+| MIA@CHA | 5.5 | 3,180s | 32.3% |
+| ORL@DET | 8.5 | 4,560s | 4.5% |
+| POR@SAS | 10.5 | 0s | 0% |
+
+Lower |spread| → more zone time, as expected. The |spread| ≤ 6
+filter correctly excludes POR@SAS (0% zone time) and correctly
+includes HOU@LAL (55%) and MIA@CHA (32%). ORL@DET at |spread|
+= 8.5 produced some zone time (4.5%) only because of the upset.
+
+### Known script issues (non-blocking)
+
+- §5 lead-time calculation should anchor to tip-off, not first
+  trade timestamp. Caused a bad value (430,530s) on the initial
+  HOU@LAL run; fixed by re-run, but the root cause is in the
+  script. One-liner patch needed.
+- §7 auto-text sometimes shows stale values from earlier runs
+  (cosmetic; the tables are correct).
+
+## 2026-04-21 — Strategy 3 graduation evaluation
+
+Formal graduation evaluation on 168-game paired dataset (165
+competitive, |spread| ≤ 6). Round-trip detection at 5 grids
+on Kalshi trade-price timeseries. See
+`docs/analysis_outputs/strategy3_graduation_eval.md` for full
+results and graduation verdict.
+
+STRATEGY3_SPEC.md updated to reflect 168-game calibration:
+- §1A compression table: Kalshi = ESPN + delta, where delta =
+  +8.30pp at 0.20-0.40 WP, −2.73pp at 0.80-1.00 WP.
+- §3 convergence-zone exit preference: 1–3 min remaining is
+  optimal exit window (|Δ| = 2.47pp, rising to 3.97pp at <1 min).
+- §4 timeout evidence upgraded from ESPN-scale to Kalshi-confirmed
+  (p = 8.5e-08 on n=7,175 timeout windows).
+- §6 zone statistics: 95% of competitive games enter S3 zone,
+  mean 2,991s zone time per game.
+
+## 2026-04-21 — Strategy 3 failed entry & worst-case analysis
+
+Complement to the graduation evaluation. Analyzed every entry
+event at ≤$0.40 across 165 competitive games — not just completed
+round-trips but also positions held to resolution (wins and
+losses). Produces the true expected value per entry, fail rate
+by quarter and spread, max adverse excursion distribution, and
+worst-case scenarios. See
+`docs/analysis_outputs/strategy3_failed_entries.md`.
+
+**Critical result: the true EV per entry is −$4.57.** The
+graduation verdict (100% of completed round-trips profitable,
+median net $13.74) was computed on the subset of entries that
+reached the exit threshold. Counting all entries: 60.9% complete
+(mean +$15.49), 39.1% are held to a loss (mean −$35.82). The
+losing-entry magnitude is 2.3× the winning-entry magnitude,
+producing a negative blended EV.
+
+Fail rate rises with both game period (Q1 34.3% → Q4 44.2% →
+OT 46.2%) and spread magnitude (|spread| 1.0-2.0: 37.8% →
+|spread| 5.5-6.0: 47.2%). 7.9% of losing entries were near-
+misses (MFE ≥ exit − $0.02); most (92%) were clean losses where
+the team got blown out. Strategy 3 in the naive (0.40, 0.50)
+grid without stop-loss or selective entry is not profitable.
+
+**Phase 4a gating should not trigger on the graduation verdict
+alone.** The graduation scorecard measured completed-round-trip
+economics, not entry-level EV. Next research: stop-loss
+calibration, selective entry filters (Q1/Q2 + tighter spread),
+and grid comparisons on the same full-entry basis.
+
+## 2026-04-21 — Stop-loss parameter sweep & position management simulation
+
+Replayed all entries from the failed-entry analysis at 20
+stop-loss levels ($0.20-$0.39) plus no-stop baseline. Identified
+optimal stop-loss, breakeven point, and false-stop rate. Also
+tested averaging-in (add at $0.35 or $0.30) and partial exits
+(sell half at $0.48, hold half for $0.55). Combined best
+configuration reported with annual EV projection. Context
+breakdowns by entry period and spread bucket. See
+`docs/analysis_outputs/strategy3_stoploss_sweep.md`.
+
+**Critical result: no stop-loss level, averaging-in variant, or
+partial-exit configuration produced positive EV.** Naive baseline
+annual EV is −$5,963. Optimal stop-loss ($0.34) improves to
+−$2,531. Best combined config (stop $0.34 + avg-in $0.35)
+reaches −$1,175 — an 80% loss reduction but still net negative.
+
+False-stop rate at the optimum is 50.8%: half of stopped-out
+positions would have recovered to complete a round-trip if held.
+Tighter stops (lower level) have fewer false stops but catch
+fewer winners that dipped deep. The entry signal at ≤$0.40 is
+too weak to support a purely-risk-management solution.
+
+**Phase 4a remains blocked.** Next research direction: selective
+entry filters (period, spread magnitude, favorite-side,
+ESPN-WP divergence) rather than further risk-management
+variations. A team's YES price dropping to $0.40 in a competitive
+game is not by itself an edge — the market correctly prices
+~40% of those dips as heading to blowout.
+
+## 2026-04-21 — Upside capture & trailing stop analysis
+
+Extended the stop-loss sweep with resolution upside capture.
+Tested scale-out ratios (sell 25-100% at first exit), trailing
+stop distances ($0.03-$0.20), and held-to-resolution variants.
+Full 96-configuration grid search across stop-loss × scale-out
+× trailing stop parameters. Identifies best overall strategy
+configuration and compares to naive, stop-only, and bilateral
+baselines. See
+`docs/analysis_outputs/strategy3_upside_capture.md`.
+
+**Critical result: no configuration produced positive EV.**
+Best found (stop $0.34 + sell 25% at $0.50 + hold 75% to
+resolution, no trailing stop): mean P&L −$0.59 per entry,
+annual EV −$852. Max single win $+49.16 (held to resolution),
+max single loss $-25.34. Win rate 16.6%; winners are 1.94×
+larger than losers but base rate is too low to flip positive.
+
+Strategy shape after upside capture: 75% stop-outs at small
+losses, 14% hold-to-resolution wins at +$49, 11% hold-to-
+resolution losses at −$25. Lottery-like distribution but
+still negative-sum.
+
+**Five consecutive dead ends for naive entry:** completed-RT
+subset is misleading; stop-loss alone doesn't fix it; avg-in
+helps marginally; partial exits don't help; upside capture
+barely helps. The entry signal at ≤$0.40 mispricing in 40%
+of cases cannot be salvaged by exit-side mechanics. Selective
+entry filters (period, spread, side, WP divergence) are the
+next research direction. Bilateral backstop remains at
++$1,608 annual EV guaranteed.
+
+## 2026-04-21 — Entry filter sweep: first positive-EV configurations found
+
+Tested four entry filters on the Strategy 3 replay engine across
+165 competitive games. Oscillation confirmation (was price recently
+higher?), ESPN WP rate-of-change (fast drop = scoring run), favorite-
+side restriction, and period filtering. Individual sweeps, combined
+grid search (32 configurations), and full strategy evolution table
+from naive through all optimizations. See
+`docs/analysis_outputs/strategy3_entry_filters.md`.
+
+**BREAKTHROUGH — 8 of 32 combined configurations produced positive
+EV.** The first positive-EV result in the Strategy 3 research chain
+after six consecutive negative findings.
+
+### Top 3 configurations by mean P&L
+
+| Config | Entries | Mean P&L | Annual EV | Win rate | Sharpe |
+|---|---:|---:|---:|---:|---:|
+| WP + Fav + Period + upside exit | 51 | **+$3.41** | **+$578** | 21.6% | 0.14 |
+| Osc + WP + upside | 57 | +$1.76 | +$334 | — | — |
+| WP + Period + upside | 152 | +$1.43 | +$725 | — | — |
+
+### Best by annual EV (more entries, slightly lower per-entry)
+
+WP + Period + upside: **+$725 annual EV at 152 entries** (vs 51 for
+best mean). Trade-off between per-entry quality and opportunity
+volume.
+
+### Individual filter findings
+
+- **Oscillation at 2min / $0.55 (standalone, simple exit): +$0.90
+  mean, +$221 annual.** Simplest positive-EV config. Requires price
+  to have been ≥ $0.55 within the last 2 minutes before the dip —
+  i.e., the dip must be a fast scoring-run signature, not a slow
+  grind.
+- **ESPN WP momentum (2min / 3pp drop): −$1.00 mean.** Marginally
+  helps but alone not enough.
+- **Favorite-side only: −$1.99 mean (WORSE than baseline).**
+  Surprising counterresult to the ESPN-scale asymmetry finding.
+  On Kalshi at these price thresholds, underdog-side dips actually
+  fare better (−$0.88 vs baseline −$1.27). The compression pattern
+  puts Kalshi above ESPN in the underdog-dip zone, so dips there
+  are less predictive of continued decline.
+- **Period: Q1/Q2 only: −$0.96 mean.** Marginal individual effect
+  but combines well with other filters.
+
+### Strategy evolution table
+
+| Strategy | Mean P&L | Annual EV | Verdict |
+|---|---:|---:|---|
+| 1. Naive (no stop, no filter) | −$4.22 | −$5,963 | negative |
+| 2. + Stop-loss @$0.34 | −$1.27 | −$2,531 | negative |
+| 3. + Upside capture (25/75) | −$0.59 | −$852 | negative |
+| 4. + Entry filters (best mean) | **+$3.41** | **+$578** | **POSITIVE** |
+| 4'. + Entry filters (best EV) | +$1.43 | +$725 | **POSITIVE** |
+| 5. Bilateral only (baseline) | +$19.14 | +$1,608 | positive |
+| 6. Best Strategy 3 + bilateral | — | **+$2,186** | **POSITIVE** |
+
+### Filter precision/recall
+
+Best config filters out **94% of candidates** (799/850 rejected,
+51 passed). Of rejected entries, 35.5% would have failed anyway
+(correctly rejected) and 64.5% would have reached $0.50
+(false rejections). Filter recall is 2.1% — extremely selective.
+This is the correct tradeoff: the filter maximizes EV per entry
+by accepting only the highest-confidence dips, at the cost of
+missing many marginal winners. The loosened WP+Period config
+has higher annual EV (+$725) because it keeps more of the
+borderline cases.
+
+### Implication for Phase 4a
+
+**Phase 4a can unlock on a selective-entry version of Strategy 3.**
+The rule set:
+- Entry: team's Kalshi bid ≤ $0.40 in a competitive game
+  (|spread| ≤ 6)
+- **Filter: ESPN WP for that team dropped ≥ 3pp in the last 2
+  minutes** AND team is the pre-game favorite AND period is Q1 or Q2
+- Position: 100 contracts
+- Initial stop: $0.34
+- At $0.50: sell 25 contracts
+- Hold 75 contracts to resolution (no trailing stop)
+
+Combined with bilateral Strategy 1 (+$1,608 annual), total projected
+EV is **+$2,186/year** at 100-contract sizing — positive but modest.
+Requires a live ESPN PBP/WP poller and live Kalshi bid-feed access
+before Phase 4a can operate.
+
+**Caveat:** the signal is data-limited (n=51 entries produced this
+result). Confidence interval on mean is wide. Live paper-trading
+in Phase 4a is the next validation step.

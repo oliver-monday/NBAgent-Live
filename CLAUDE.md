@@ -47,13 +47,23 @@ until research produces a validated strategy spec.** Progress:
      - Kalshi historical trades probe: 93,838 trades on
        HOU-LAL. 100-contract orders are invisible (0.02%
        of 5-min bucket volume). Sizing is not a constraint.
-     - Strategy 3 assessment document written. Graduation
-       threshold: 10 competitive Kalshi games. Current: 2/10.
-     - STRATEGY3_SPEC.md created as living spec document.
-       Entry rule: price-based (bid ≤ $0.40), contextual
-       modifiers (favor favorite, prefer Q1/Q2, moderate
-       runs). Timeout = execution window, not signal.
-   - Phase 3B formal (≥10 games) still needed.
+     - **Phase 3B complete (2026-04-21):** 168 games paired
+       via ticker-matcher batch infrastructure (165 competitive
+       |spread|≤6). S1/S3-filtered/S4A/S4B all analyzed.
+     - **Strategy 3 final state:** naive rule retracted
+       (negative EV on full entries). Filtered variant
+       (WP drop + fav + Q1/Q2 + upside exit) holdout-validated
+       at +$578–$825/yr test-set EV. Spec:
+       `docs/STRATEGY3_SPEC.md` §8.
+     - **Strategy 4 confirmed:** Dip-recovery swing trading.
+       +$1,886/yr (S4A fav, best config). Spec:
+       `docs/STRATEGY4_SPEC.md`. Position management tested
+       (baseline optimal). Prior-weighting tested (not useful).
+       S4B underdog hybrid +$1,105/yr, needs more data.
+     - **Phase 4a unlocked.** Three validated alpha sources
+       (S1 +$1,608, S4A +$1,886, S3-filtered +$578–$825),
+       combined ~$4,072–$4,319/yr.
+   - Phase 3B formal COMPLETE (see above).
 4. **Phase 4** — Live decision engine. Not scoped until
    Phase 3 produces a validated strategy spec.
 
@@ -213,6 +223,12 @@ memory as starting from the first session's context.
   Current best-guess entry/exit rules, execution preferences,
   operating parameters, and graduation status. The primary
   deliverable of Phase 3. Supersedes `docs/strategy3_assessment.md`.
+- `docs/STRATEGY4_SPEC.md` — **living Strategy 4 rule spec.**
+  Dip-recovery swing trading: buy favorite during temporary
+  underdog runs ($0.50–$0.75), exit at $0.90. Best single
+  strategy by annual EV (+$1,886/yr). Includes false-summit
+  exit analysis, prior-weighting results, position management
+  conclusions.
 - `docs/THESIS.md` — long-term project thesis and framing.
 - `docs/RESEARCH_LOG.md` — current findings, what has and hasn't
   been validated yet.

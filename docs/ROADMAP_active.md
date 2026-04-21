@@ -8,40 +8,29 @@
 
 ## Phase 3 — Analysis on ESPN WP foundation + paired data
 
-- **Phase 3B formal** — paired Kalshi + ESPN + sportsbook
-  analysis on ≥10 games. Blocked on Kalshi data accumulation
-  (currently n=4 usable). Covers: realized spread measurement
-  at (0.25, 0.35) entry prices, Strategy 1 opportunity rate
-  validation on Kalshi data, Strategy 3 oscillation
-  characterization.
-- **Strategy 3 scoping — active priority.** Swing-trading
-  analysis on Kalshi price oscillation data. Living spec:
-  `docs/STRATEGY3_SPEC.md`.
-  - HOU-LAL deep dive (n=1): mid-range round-trips confirmed,
-    $14.55/trade maker-maker. Operating zone is $0.35-$0.55.
-  - Game flow trajectories (ESPN, N=1,234): 75% of competitive
-    games produce ≥1 mid-range round-trip.
-  - Odds API timeseries (n=15 FanDuel): 30.4% ESPN-to-market
-    survival rate. ~689 market-price round-trips/season.
-  - Favorite-side to resolution: **killed** (−$18.40 blended).
-  - Multi-game Kalshi (4/19 R1G1, n=4): ORL@DET confirmed
-    oscillation. 3 blowouts expected for R1G1 seeds.
-  - Kalshi trades probe: sizing resolved (100 contracts
-    invisible at 0.02% of bucket volume).
-  - Timeout execution windows (HOU-LAL + ORL@DET): confirmed
-    as execution quality enhancer (2.3× depth, $0.01 spread
-    floor). NOT a directional signal.
-  - Score-to-price impact (n=2 Kalshi): 3-pointer moves market
-    $0.04 in 3.5s, impact peaks in $0.40-$0.50 zone.
-  - ESPN scoring-run catalog (N=549 competitive games): 89% of
-    runs produce some bounce-back. Favorites recover 3-6pp
-    more often than underdogs. Q1 runs reverse most reliably
-    (59%). Timeouts do not improve recovery rates.
-  - **Graduation threshold: 10 competitive Kalshi games.
-    Current progress: 2/10.** Continue accumulating via logger
-    during playoff games.
-  - Next: run `strategy3_oscillation_multi.py` on each night's
-    games as they complete.
+- **Phase 3B formal — COMPLETE (2026-04-21).** 168 games
+  paired via ticker-matcher batch infrastructure (165
+  competitive, |spread| ≤ 6, dates 2026-02-20 → 2026-04-15).
+  Realized spread measured ($0.01 median), S1 opportunity
+  rate validated, S3 filtered validated via holdout, S4
+  dip-recovery discovered and confirmed. Phase 3B output:
+  three deployment-ready alpha sources for Phase 4a.
+- **Strategy 3 scoping — COMPLETE (2026-04-21).** Naive rule
+  retracted (negative EV). Filtered rule (WP momentum + fav
+  + Q1/Q2 + upside exit) holdout-validated at +$578–$825/yr
+  test-set EV. Living spec: `docs/STRATEGY3_SPEC.md` §8.
+  Full arc detailed in ROADMAP_resolved.md.
+- **Strategy 4 — CONFIRMED (2026-04-21).** Dip-recovery swing
+  trading: buy favorite at $0.50–$0.75 during temporary
+  underdog runs, exit at $0.90. Best single strategy by EV.
+  Living spec: `docs/STRATEGY4_SPEC.md`. Full arc detailed
+  in ROADMAP_resolved.md.
+- **Current Phase 4a-ready alpha stack:**
+  - S1 bilateral: +$1,608/yr (confirmed)
+  - S4A dip-recovery: +$1,886/yr (confirmed)
+  - S3 filtered: +$578–$825/yr (holdout-validated)
+  - S4B underdog hybrid: +$1,105/yr (positive, needs more data)
+  - Combined conservative: **+$4,072–$4,319/yr**
 - **§1.4 retirement analyses** — three spread-anchoring tests.
   Deprioritized: the strategy-relevant question (how does
   Kalshi behave at the tails?) is now answered directly by
@@ -51,13 +40,17 @@
   question is now answered empirically via sportsbook
   consensus rather than model-fitting.
 
-## Phase 4 — Live decision engine (speculative)
+## Phase 4 — Live decision engine
+
+**As of 2026-04-21: Phase 3B is complete, Phase 4a is unlocked.**
+Three validated strategies ready for paper-trading: S1
+bilateral, S4A dip-recovery, S3 filtered. See
+`docs/KILL_CRITERIA_draft.md` §Project-level decisions.
 
 Rule-based trading bot. No LLM-in-the-loop, no live ML inference —
 the "intelligence" lives entirely in rules derived from Phase 3
 offline research; the runtime just evaluates conditions on current
-state and fires predefined actions. Hard dependency on Phase 3B
-producing a validated strategy spec — do not design until then.
+state and fires predefined actions.
 
 ### Core loop
 
@@ -167,15 +160,12 @@ existing per-strategy thresholds.
   edge is eroding, operator needs to know *before* capital is
   lost, not after. Build the monitoring before any money is on
   the line.
-- **Phase 3B could invert strategy signs — cart and horse.** The
-  n=2 / n=6 smoke tests have shown the pipeline works and
-  produced interesting findings, but the headline "Kalshi is less
-  extreme than ESPN" result potentially *inverts* Strategy 2's
-  sign relative to the pilot's +3pp projection against ESPN.
-  Formal Phase 3B at n≥10 games may show that the strategies we
-  want to automate look meaningfully different from what the
-  pilot suggested. Do not start Phase 4a rule authoring until
-  Phase 3B lands.
+- **Phase 3B signal-inversion warning — RESOLVED (2026-04-21).**
+  The earlier warning that Phase 3B might invert strategy signs
+  turned out partially true: Strategy 2 was formally killed
+  (−$18.40 blended on FanDuel data). Strategies 1, 3-filtered,
+  and 4 all validated on the 168-game paired dataset. Phase 4a
+  rule authoring has begun.
 
 ### Operational note
 

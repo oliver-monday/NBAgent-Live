@@ -927,3 +927,62 @@ disproportionately losing). No further investigation.
 **2026-04-20 — §2.6 added and immediately retired.** Kalshi
 trades probe confirmed 100-contract orders are invisible in
 HOU-LAL trade flow. Sizing is not a constraint.
+
+**2026-04-21 — Phase 3B formal complete; open items resolved or
+reframed.** The 168-game paired-analysis arc (168 games, 165
+competitive) completed. Consolidated resolutions:
+
+- **§1.1 Kalshi ≈ ESPN-style WP model** — fully resolved.
+  Compression calibrated by WP zone on 46,981 in-game bins:
+  Kalshi = ESPN + Δ where Δ = +4.6pp (0.0-0.2), +8.3pp
+  (0.2-0.4), +4.1pp (0.4-0.6), −1.8pp (0.6-0.8), −2.7pp
+  (0.8-1.0). Convergence slope −0.000020/s pooled, all
+  p ≈ 0.
+- **§1.2 Pilot bilateral-dip frequencies as upper bounds** —
+  resolved. S1 bilateral calibrated at real Kalshi rates:
+  +$1,608/yr on ~84 bilateral opportunities per regular
+  season. Upper-bound haircut confirmed; the residual rate
+  is sufficient for deployment.
+- **§1.3 Mechanical edge framing** — resolved. S1 bilateral
+  graduation on held-out data confirms the arithmetic edge
+  holds at realistic fill rates.
+- **§1.4 ESPN spread-anchoring** — fully retired. Direction
+  was confirmed reversed (ESPN swings harder than Kalshi);
+  the three retirement analyses are no longer load-bearing
+  because the compression question is directly answered by
+  §1.1's quantified zone calibration.
+- **§2.2 Adversarial MM dynamics** — addressed. Trades probe
+  and spread analysis show $0.01 spread floor held across
+  all game states, depth is 2.3× during timeouts, no MM
+  defensive widening observed at swing moments. Not a barrier
+  to deployment.
+- **§2.5 Realized bid-ask spread at target prices** —
+  resolved. Median spread $0.01 at all mid-range entry
+  prices on 165-game sample. Fee + spread envelope does not
+  disqualify any strategy.
+- **§6.5 MM defense at extreme-low prices** — resolved in
+  the negative direction. Failed-entry analysis showed 39%
+  of ≤$0.40 entries go to terminal decline; the MM is NOT
+  pulling back at extremes, those dips carry genuine
+  information 40% of the time. This is why S3 requires
+  selective-entry filters to be positive-EV.
+- **§6.6 Flow-driven non-game-state price moves** — partially
+  resolved. 168-game paired dataset shows delta (Kalshi −
+  ESPN) of 5.4pp in timeout windows vs 5.5pp outside,
+  Mann-Whitney p = 8.5e-08. Small but definitive signal that
+  timeouts are convergence micro-events; flow and game-state
+  moves are distinguishable at scale.
+- **§3.1 Kill criteria written** — fully resolved in
+  `docs/KILL_CRITERIA_draft.md` with per-strategy graduate/kill
+  conditions for S1, S2 (killed), S3 (naive killed, filtered
+  validated), and S4 (graduated).
+
+Outstanding open items after this pass: §2.1 (liquidity at
+extremes remains partially open — fill-quality at 1k+ contract
+sizes still untested), §2.3 (MM calibration decay over time,
+by design a live-monitoring item not a Phase 3 item), §2.4
+(playoff vs regular season — playoff games remain
+under-represented; current 168-game dataset is regular-season
+only), §3.4 (opportunity-existed vs tradeable — first-order
+validated via the 30s-bin granularity, but sub-second fill
+reality is a Phase 4a question).

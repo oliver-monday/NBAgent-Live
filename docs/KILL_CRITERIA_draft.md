@@ -211,7 +211,28 @@ concordance with 8+ independent sportsbooks.
   rejects HFT; if the opportunity requires HFT-like speed,
   it's outside our operating model).
 
-### Strategy 3 recalibration (2026-04-20)
+### Strategy 3 retraction + filter validation (2026-04-21)
+
+**The original graduation verdict on the naive ($0.40, $0.50)
+grid has been retracted.** The scorecard below was computed
+on completed round-trips only (the 60.9% of entries that
+reached $0.50). Counting all entries including held-to-loss
+outcomes, the naive rule's true EV is −$4.57 per entry
+(−$5,963/yr). See `docs/analysis_outputs/strategy3_failed_entries.md`.
+
+Stop-loss sweeps (20 levels), averaging-in (6 configs),
+upside capture (96 configs) — all negative EV on the naive
+entry signal. The only positive-EV variant is a *filtered*
+entry (ESPN WP momentum + favorite + period), holdout-validated
+at +$825/yr test-set EV (`strategy3_holdout_validation.md`).
+
+Canonical current Strategy 3 spec: see `docs/STRATEGY3_SPEC.md`
+§8 (updated 2026-04-21).
+
+The sections below remain for historical reference as the
+original recalibration framework.
+
+### Strategy 3 recalibration (2026-04-20 — historical)
 
 The original thresholds assumed extreme-price entry (≤ $0.20)
 and $0.15+ swings. Research established that the actual
@@ -220,17 +241,22 @@ Recalibrated criteria:
 
 **Graduates if ALL of (on ≥10 competitive Kalshi games):**
 
+*Sample now available: 165 competitive games (|spread| ≤ 6)
+from 168-game paired analysis. Threshold of ≥10 exceeded.
+Formal evaluation in `docs/analysis_outputs/strategy3_graduation_eval.md`.*
+
 1. **Round-trip frequency ≥ 15%** of |spread|≤6 games
    produce a completed round-trip at (0.40, 0.50) or
-   better thresholds. Current: 2/2 competitive games
-   (100%), but n=2 is not meaningful.
+   better thresholds. Current: see graduation eval report.
 2. **Median net per round-trip ≥ $5** (maker-maker, 100
-   contracts). Current: $21.70 pooled median (n=7 trips
-   across 2 games).
+   contracts). Current: see graduation eval report.
 3. **Realized spread ≤ $0.02** at mid-range entry prices.
-   Current: $0.01 across 5 games.
+   Current: $0.01 across 5 logged games (structural;
+   not measurable from historical trades).
 4. **Depth ≥ 50 contracts** at entry prices in ≥50% of
-   entry-zone snapshots. Current: 55% pooled.
+   entry-zone snapshots. Current: 55% pooled across
+   5 logged games (structural; not measurable from
+   historical trades).
 
 **Killed if ANY of (on ≥10 competitive Kalshi games):**
 
@@ -252,7 +278,56 @@ satisfied with substantial margin.
 
 ---
 
+## Strategy 4: Dip-recovery swing trading (added 2026-04-21)
+
+Distinct from S3: entry zone $0.50–$0.75 on the favorite's
+YES contract during temporary underdog runs; exit at $0.90.
+Full spec: `docs/STRATEGY4_SPEC.md`.
+
+### Graduates if ALL of (on 168-game paired dataset):
+
+1. **Positive annual EV on full sample.** Current: +$1,886/yr
+   at best config (180s lookback / $0.08 dip / $0.50–$0.75
+   entry / $0.90 exit / $0.40 stop).
+2. **Train/test consistency.** Parameter is fixed (no fitted
+   values to overfit), but half-sample stability required.
+   Current: train +$3.19 / test +$4.24 mean P&L on seed=42
+   split. ✓ consistent.
+3. **Robust parameter neighborhood.** Perturbations of the
+   best config should still be positive-EV. Current: all 20+
+   configs in the top-EV neighborhood remain positive.
+4. **Hit-rate vs stop-rate split is bimodal and stable.**
+   Positions either reach $0.90 (53%) or stop at $0.40 (47%),
+   with almost nothing in between. ✓.
+
+### Killed if ANY of:
+
+- **Annual EV goes negative** on a forward 50-game sample.
+- **Hit rate drops below 45%** while stop rate is held
+  constant.
+- **Max single loss exceeds −$50** frequently (currently
+  −$43.60 is the worst observed, set by 30s-bin price gaps
+  through the $0.40 stop).
+- **Position management becomes necessary** — if the simple
+  100-contract / single-entry / single-exit is no longer
+  optimal, the underlying signal is degrading.
+
+**Current status: GRADUATED** on the full 168-game sample.
+Phase 4a unlocked per the Continue-to-Phase-4 criterion below.
+
 ## Project-level decisions
+
+### Phase 4 unlocked (2026-04-21)
+
+At least three strategies have graduated:
+- **S1 bilateral** (THESIS.md §2.1 — confirmed, +$1,608/yr)
+- **S4A dip-recovery** (STRATEGY4_SPEC.md — confirmed,
+  +$1,886/yr)
+- **S3 filtered** (STRATEGY3_SPEC.md §8 — holdout-validated,
+  +$578–$825/yr)
+
+Phase 4a begins with paper-trading the validated strategies
+using signal alerts, no real capital.
 
 ### Continue to Phase 4 if:
 

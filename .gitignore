@@ -14,3 +14,6 @@ data/pbp/*.jsonl
 
 # Kalshi orderbook snapshots (irreplaceable — backed up to personal cloud)
 data/orderbook_snapshots/
+
+# WP vs Kalshi paired analysis — raw API caches are large; CSVs + report committed
+data/wp_kalshi_paired/*.json

@@ -24,7 +24,7 @@ This reframes the problem from prediction (hard, competitive, largely
 priced in) to positional trading around known patterns of price
 movement (tractable, underexplored in prediction-market contexts).
 
-## Three strategy layers
+## Four strategy layers
 
 ### 1. Bilateral convergence (baseline)
 
@@ -57,10 +57,11 @@ risk the $0.10 cost, payoff up to $1.00.
   kill pending Phase 3B confirmation.**
 - Validation requires paired (Kalshi price, game state) data — the
   core purpose of Phase 1's live logging.
-- **Preliminary kill issued 2026-04-19.** Sportsbook backfill
-  established that Kalshi/sportsbooks price underdog moments
-  at +10-17pp above ESPN. The +3pp ESPN-vs-actual residual is
-  entirely absorbed. Formal kill pending Phase 3B confirmation.
+- **Formally KILLED 2026-04-21.** Sportsbook backfill established
+  Kalshi/sportsbooks price underdog moments at +10-17pp above ESPN.
+  FanDuel timeseries (n=15) confirmed: pooled blended net of
+  −$18.40 per position on hold-to-resolution. Strategy 2 is not
+  viable on real-money markets.
 
 ### 3. Active position management (swing trading)
 
@@ -68,29 +69,48 @@ Buy cheap during one team's run, sell when the market swings
 back — without waiting for game resolution. Profits come from
 price oscillation rather than directional accuracy.
 
+**2026-04-21 status:** the naive $0.40 entry / $0.50 exit rule
+was retracted after the failed-entry analysis showed −$4.57
+true EV per entry. Stop-loss, averaging-in, and upside-capture
+variants all underperform. The *filtered* variant
+(ESPN WP drop ≥3pp in 120s + favorite + Q1/Q2 + upside exit)
+was holdout-validated at +$578–$825/yr test-set annual EV.
+
 - Edge **sidesteps the calibration question** — works regardless
   of whether Kalshi's model is well-calibrated, as long as prices
-  swing enough to cover costs and spreads.
+  swing enough AND the entry signal discriminates recoverable
+  dips from terminal declines.
 - **Operating zone is $0.35-$0.55** (mid-range competitive
   prices), not the extreme-price zone ($0.10-$0.20) originally
-  hypothesized. Extreme prices indicate decided games with no
-  bounce-back.
-- **Per-trade economics validated on Kalshi (n=2 games):**
-  $14-25 net per round-trip (maker-maker, 100 contracts).
-  Hold times 8-100 min (median ~30 min). Spread $0.01.
-- **Universe estimated at ~689 market-price round-trips per
-  season** (from 30.4% ESPN-to-FanDuel survival rate applied
-  to 2,272 ESPN round-trips in competitive games).
-- **Favorite-side variant killed.** Negative EV at market
-  prices (−$18.40 blended net on FanDuel data). Resolution
-  backstop fires into losses 84% of the time.
-- Highest ceiling of the three strategies, highest execution
-  demands. Requires monitoring game flow well enough to time
-  entries and exits.
-- Natural complement to bilateral convergence — both exploit
-  volatility, but swing trading monetizes partial swings that
-  convergence misses.
-- **Assessment document:** `docs/strategy3_assessment.md`.
+  hypothesized.
+- **Naive single-price-trigger rule is negative EV.** Entry
+  selection is critical. Filters do 90%+ of the work; execution
+  mechanics (stop/exit) are secondary.
+- Current spec: `docs/STRATEGY3_SPEC.md` §8.
+
+### 4. Dip-recovery on the favorite's natural buoy
+
+**Added 2026-04-21.** The highest-EV single strategy discovered
+in the 168-game paired analysis.
+
+Buy the pre-game favorite's YES contract during temporary
+underdog runs, while the market still prices the favorite to
+win ($0.50–$0.75 zone). Exit when the favorite reasserts
+($0.90). Explicitly no resolution exposure.
+
+- **Thesis:** competitive NBA games produce temporary disruptions
+  (scoring runs), and the pre-game favorite has a structural
+  recovery tendency because the market's prior is still anchored
+  on them. This pattern is more common and more predictable than
+  the S3 "buy the deep dip" setup.
+- **Kalshi-confirmed at +$1,886/yr** (100 contracts, maker-maker).
+  53% hit rate at $0.90, 47% stop at $0.40. Bimodal outcome
+  distribution. Position management tested — baseline optimal.
+- **Distinct from S3** on every parameter: entry zone
+  ($0.50-$0.75 vs $0.40), exit target ($0.90 vs $0.50), no
+  resolution risk, and the structural bet is "temporary
+  disruption" not "mispricing of a collapse."
+- Current spec: `docs/STRATEGY4_SPEC.md`.
 
 ## What this project is not
 

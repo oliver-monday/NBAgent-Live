@@ -5,15 +5,17 @@ current best-guess rule set for Strategy 3, with each element
 tagged by evidence source and confidence level.
 
 **Evidence tiers:**
-- **Kalshi-confirmed** — validated on real Kalshi orderbook/
-  trade data (n=2 competitive games so far)
+- **Kalshi-confirmed** — validated on real Kalshi trade data.
+  As of 2026-04-20: 168 games paired (ESPN WP + Kalshi trades),
+  165 competitive (|spread| ≤ 6).
 - **ESPN-scale** — supported by 1,234-game ESPN WP analysis;
-  directional patterns expected to transfer, magnitudes will
-  be smaller on Kalshi (+10-17pp compression at tails)
+  directional patterns expected to transfer. Compression
+  calibration now quantified: Kalshi = ESPN + delta, where
+  delta varies by WP zone (see §1A below).
 - **Hypothesized** — theoretically motivated, not yet tested
   at any scale
 
-Last updated: 2026-04-20.
+Last updated: 2026-04-21.
 
 ---
 
@@ -41,22 +43,69 @@ Last updated: 2026-04-20.
 Maker-maker execution is 4× cheaper. Strategy 3 economics
 require maker execution on at least one leg.
 
+### §1A. ESPN WP ↔ Kalshi price calibration (Kalshi-confirmed, n=168 games)
+
+Kalshi systematically compresses toward $0.50 relative to
+ESPN WP. The compression magnitude varies by WP zone:
+
+| ESPN WP zone (fav) | Kalshi − ESPN (mean) | 95% CI | N obs |
+|---------------------|---------------------|--------|-------|
+| 0.00–0.20 | +4.61pp | ±0.12pp | 7,332 |
+| 0.20–0.40 | +8.30pp | ±0.22pp | 6,130 |
+| 0.40–0.60 | +4.09pp | ±0.16pp | 9,422 |
+| 0.60–0.80 | −1.76pp | ±0.12pp | 9,799 |
+| 0.80–1.00 | −2.73pp | ±0.06pp | 14,298 |
+
+**Operational translation:** ESPN WP of ~0.32 for a team
+corresponds to Kalshi price ~$0.40 for that team (the
+entry threshold). ESPN WP crossing 0.32 is the early-warning
+signal that Kalshi is approaching the entry zone. The
+crossover point (delta ≈ 0) is at approximately 0.58 WP.
+
+**Convergence:** |delta| shrinks from 7.7pp at >36 min
+remaining to 2.5pp at 1–3 min remaining (n=46,981 bins).
+Pick'em games converge 50% faster than moderate favorites
+(slope −0.000025/s vs −0.000016/s, both p ≈ 0).
+
+**Per-basket reactions:** Kalshi moves ±0.02pp per scoring
+play vs ESPN ±0.04–0.20pp. Kalshi absorbs individual
+baskets as noise and reprices on accumulated runs, not
+single plays. This confirms price-threshold entry over
+any model-based or per-event trigger.
+
 ---
 
 ## 2. Entry rule
 
-### Primary signal (Kalshi-confirmed)
+### Primary signal (revised 2026-04-21 — filtered variant)
 
-**Enter when a team's YES contract bid price drops to or below
-the entry threshold ($0.40) during a competitive game.**
+**Entry requires four conditions to fire simultaneously:**
 
-The signal is purely price-based. No model, no prediction, no
-external data dependency beyond the Kalshi orderbook itself.
+1. Favorite-side only (pre-game favorite per DraftKings
+   pickcenter or home_spread < 0)
+2. Period is Q1 or Q2
+3. Favorite's ESPN WP has dropped ≥ 3pp within the last 120
+   seconds of game time
+4. Favorite's Kalshi bid price drops to ≤ $0.40
 
-Evidence: 7 completed round-trips across 2 competitive Kalshi
-games, all profitable at (0.40, 0.50) maker-maker. Entry
-threshold validated against the oscillation pattern that
-competitive NBA games naturally produce.
+**Why all four:** the naive single-condition rule (bid ≤ $0.40
+alone) was shown to be net negative-EV (−$4.57 per entry counting
+held-to-loss outcomes). 60.9% of those entries reached $0.50
+(profitable round-trip), 39.1% went to resolution loss. No
+stop-loss, averaging-in, upside-capture, or partial-exit variant
+rescues the aggregate EV. Entry *selection* (filters) is what
+restores positive EV. Per the holdout validation, 4 of 6 random
+seeds produce positive test-set P&L with this filter stack.
+
+Full derivation in `docs/analysis_outputs/strategy3_entry_filters.md`
+and `docs/analysis_outputs/strategy3_holdout_validation.md`.
+
+### Original (retained for archive) — naive primary signal
+
+Prior spec: "Enter when a team's YES contract bid price drops
+to or below $0.40 during a competitive game." Purely price-based,
+no filter. This was the rule the graduation eval initially
+validated; subsequent failed-entry analysis retracted it.
 
 ### Contextual modifiers
 
@@ -143,6 +192,24 @@ evaluation at 10 games. Current recommendation: primary
 grid (0.40, 0.50) with opportunistic wider exits when the
 market moves favorably.
 
+### Convergence-zone exit preference (Kalshi-confirmed, n=168 games)
+
+**Prefer exiting positions when 1–3 minutes remain in
+regulation.**
+
+The WP vs Kalshi paired analysis (168 games) shows that
+|delta| between Kalshi price and ESPN WP reaches its
+minimum at 1–3 minutes remaining (2.47pp). After this
+window, delta spikes back to 3.97pp in the final minute
+due to last-possession volatility in close games.
+
+Implication: if the exit threshold has not been reached
+by the 3-minute mark but the position is near breakeven,
+consider exiting at market during this convergence window
+rather than holding into the volatile final minute. This
+is a preference, not a hard rule — the primary exit
+remains price-based at the exit threshold.
+
 ### Stop-loss / time exit (Hypothesized)
 
 No stop-loss rule is currently specified. The ESPN max-
@@ -153,8 +220,8 @@ require 30+ minutes of hold time.
 
 Open question: should a time-based exit (e.g., "exit at
 market after 60 min if exit threshold not reached") be
-added? Requires more Kalshi data to evaluate the trade-off
-between patience and opportunity cost.
+added? The graduation evaluation (§8) reports hold time
+distributions to inform this decision.
 
 ---
 
@@ -172,13 +239,20 @@ When a timeout coincides with the entry threshold being
 met, prefer entering via a maker order during the dead
 ball. The book is maximally receptive.
 
-### Timeouts are NOT directional signals (ESPN-scale, confirmed)
+### Timeouts are convergence micro-events (Kalshi-confirmed, n=168 games)
 
-Runs followed by timeouts recover at 51% vs 53% without
-(Table 7, ESPN scoring-run catalog, n=6,210). Timeouts
-do not predict recovery. The entry signal remains price-
-based; the timeout is an execution quality enhancer, not
-a trigger.
+Timeouts produce marginally tighter delta between Kalshi
+and ESPN (mean |Δ| 5.37pp vs 5.54pp outside timeouts,
+Mann-Whitney p = 8.5e-08, n=7,175 timeout windows).
+The effect is small but statistically definitive. Combined
+with better depth and spread, timeouts are confirmed as
+the optimal execution window across three dimensions:
+tighter delta, deeper book, narrower spread.
+
+Timeouts remain NOT directional signals. Runs followed
+by timeouts recover at 51% vs 53% without (ESPN scoring-
+run catalog, n=6,210). The entry signal remains price-
+based; the timeout is purely an execution quality enhancer.
 
 ### Market reaction speed (Kalshi-confirmed, n=2)
 
@@ -219,6 +293,8 @@ operating scale.
 | Metric | Value | Source |
 |--------|-------|--------|
 | Competitive games per regular season | 549 of 1,230 (~45%) | Master CSV, \|spread\| ≤ 6 |
+| Games entering S3 zone (of competitive) | 156 of 165 (95%) | WP vs Kalshi paired (n=168) |
+| Mean S3 zone time per game | 2,991s (35.3% of game) | WP vs Kalshi paired (n=168) |
 | ESPN round-trips per season (0.35, 0.50) | ~2,272 | Game flow trajectories |
 | ESPN-to-market survival rate | 30.4% | FanDuel timeseries (n=15) |
 | Estimated market-price round-trips/season | ~689 | 2,272 × 30.4% |
@@ -226,67 +302,109 @@ operating scale.
 | Post-run recovery rate (any positive, 5 min) | 89% | ESPN scoring-run catalog |
 | Post-run recovery rate (positive at 3 min checkpoint) | 52% | ESPN scoring-run catalog |
 
-### Annual EV projection (illustrative, not committed)
+### Annual EV projection (revised 2026-04-21)
 
-At 100-contract sizing, maker-maker, (0.40, 0.50) grid:
-- ~689 round-trip opportunities per regular season
-- Assume 50% execution rate (monitoring, missed games): ~345
-- $9.14 net per trip (at $0.10 swing, maker-maker)
-- **~$3,150 annual EV** on the conservative end
+**Naive (0.40, 0.50) grid: negative EV.** Full-sample analysis
+gives −$5,963/yr counting held-to-loss entries. Superseded by
+filtered variant.
 
-At wider grids and better execution rates, prior estimates
-ranged to ~$9,600 (from Odds API timeseries analysis). The
-true number depends on realized Kalshi round-trip frequency
-and the grid chosen, both open questions for the graduation
-evaluation.
+**Filtered variant** (WP momentum + favorite + Q1/Q2 + upside
+exit, 100 contracts, maker-maker):
+- Train-set full-sample: +$578/yr
+- Holdout test-set estimate: **+$825/yr** (n=19 test entries)
+- Conservative range: **+$578–$825**
 
----
-
-## 7. Open questions (blocked on 10-game graduation data)
-
-1. **Realized round-trip frequency on Kalshi at (0.40, 0.50).**
-   Current: 2/5 games (40%). Need ≥10 competitive games.
-
-2. **Optimal entry/exit grid.** (0.40, 0.50) vs (0.35, 0.45) vs
-   (0.40, 0.55). Trade-off between frequency and per-trip
-   profit. Graduation evaluation should compare all three.
-
-3. **Favorite asymmetry on Kalshi.** ESPN shows 76% vs 73%
-   recovery at < 0.35 (modest). Does this survive market
-   compression? n=2 is not enough to tell.
-
-4. **Period effects on Kalshi.** ESPN shows Q1 > Q4 for
-   recovery. Does this hold at market prices?
-
-5. **Time exit / stop-loss.** Should positions have a maximum
-   hold time? Requires observing the distribution of hold
-   times across ≥10 games.
-
-6. **Playoff vs regular season.** Current data is playoff-only.
-   Playoff games may be systematically more competitive (and
-   thus more profitable) than regular season. Need regular-
-   season data eventually.
+The earlier "$3,150" / "$9,600" projections were based on the
+completed-RT subset statistic and are retracted. See §8.
 
 ---
 
-## 8. Graduation status
+## 7. Open questions
 
-**Progress: 2/10 competitive Kalshi games toward graduation.**
+1. **Optimal entry/exit grid.** (0.40, 0.50) vs (0.35, 0.45) vs
+   (0.40, 0.55). Graduation evaluation compares all three grids
+   on 168-game dataset. See graduation report.
 
-All 6 viability scorecard criteria currently pass (from
-`docs/KILL_CRITERIA_draft.md` recalibrated thresholds):
+2. **Favorite asymmetry on Kalshi.** ESPN shows 76% vs 73%
+   recovery at < 0.35 (modest). Paired data shows Kalshi is
+   always above ESPN in the 0.20-0.40 zone (+8.30pp), suggesting
+   the market shares the favorite-recovery prior. Needs formal
+   test on Kalshi round-trip data split by fav/dog side.
 
-| Criterion | Threshold | Current | Status |
-|-----------|-----------|---------|--------|
-| RT frequency at (0.40, 0.50) | ≥ 15% | 40% (2/5) | ✓ |
-| Net per trip (median, maker) | ≥ $5 | $21.70 | ✓ |
-| Realized spread (median) | ≤ $0.02 | $0.01 | ✓ |
-| Depth (% ≥ 50k) | ≥ 50% | 55% | ✓ |
-| Hold time (median) | ≥ 3 min | 49 min | ✓ |
-| MAE (median, % of entry) | < 50% | 17.5% | ✓ |
+3. **Period effects on Kalshi.** ESPN shows Q1 > Q4 for
+   recovery. Graduation evaluation reports entry period
+   distribution and per-period net profit. See graduation report.
 
-Graduation at ≥10 competitive games triggers Phase 4a
-(signal alerts for manual paper-trading).
+4. **Bilateral guaranteed-profit frequency.** How often do
+   both sides dip below $0.40 in the same game? Each such game
+   is a ~$18 guaranteed profit (minus 4 maker legs). Graduation
+   evaluation reports this. See graduation report.
+
+5. **Taker flow as directional signal.** 15M+ cached trades
+   have taker_side field. Net taker flow may predict subsequent
+   price movement. Not yet analyzed.
+
+6. **Orderbook shape / support-resistance.** Logger snapshots
+   capture full depth. Bid walls at specific price levels may
+   inform per-game entry/exit level selection beyond fixed grids.
+   Not yet analyzed.
+
+---
+
+## 8. Graduation status (revised 2026-04-21)
+
+**Evaluation dataset: 168 games (165 competitive, |spread| ≤ 6).**
+
+The original graduation evaluation (`strategy3_graduation_eval.py`)
+scored all six viability criteria as passing: 63.6% RT frequency,
+$13.74 median net, 100% of completed round-trips profitable.
+Verdict at the time: GRADUATED.
+
+**That verdict was retracted.** The graduation eval measured only
+*completed* round-trips — the 60.9% of entries that reached
+$0.50. The `strategy3_failed_entries.py` analysis added the other
+39.1% (positions held to a loss when the exit was never reached)
+and found **true EV per entry is −$4.57, annual EV −$5,963**.
+Stop-loss sweep (best $0.34): −$1.27, upside capture (sell 25% +
+hold 75%): −$0.59. All variants of the naive $0.40 entry are
+negative-EV.
+
+### What was validated instead
+
+The naive entry trigger at $0.40 is negative-EV in aggregate. A
+*filtered* variant was holdout-validated.
+
+**Validated S3 filter spec** (best test-set config, seed=42
+110/55 holdout):
+
+- Entry: favorite-side only, when **ESPN WP drops ≥ 3pp in the
+  last 120s** AND period is Q1 or Q2 AND favorite's Kalshi
+  bid ≤ $0.40.
+- Exit strategy: upside capture (stop $0.34, sell 25% at $0.50,
+  hold 75% to resolution).
+- Train mean P&L: +$2.85/entry. **Test mean P&L: +$4.35/entry.
+  Test annual EV: +$825.**
+
+6-seed stability: 4 of 6 seeds produce positive test-set P&L.
+The `wp+fav+period+upside` combo was picked best by 3 of 6
+seeds and validated on all three.
+
+Deployment tier: validated but thin sample (~32 train + ~19 test
+entries per split). Projected annual EV range **+$578 to +$825**
+per STRATEGY4_SPEC.md §9.
+
+Full analysis: `docs/analysis_outputs/strategy3_holdout_validation.md`.
+
+### Phase 4a status
+
+Phase 4a is now unlocked, but **not on naive S3**. Phase 4a
+gating relies on three independent validated alpha sources:
+
+1. **S1 bilateral** (confirmed, +$1,608/yr)
+2. **S4A dip-recovery** (confirmed, +$1,886/yr; see STRATEGY4_SPEC.md)
+3. **S3 filtered** (holdout-validated, +$578–$825/yr)
+
+Total combined annual EV estimate: **+$4,072–$4,319**.
 
 ---
 
