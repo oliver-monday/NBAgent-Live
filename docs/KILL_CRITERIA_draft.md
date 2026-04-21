@@ -1,8 +1,9 @@
 # Kill Criteria — NBAgent-Live Strategy Graduation & Termination
 
-Draft written 2026-04-17, before any Kalshi game-day data exists.
-Intentionally written pre-data to avoid anchoring thresholds to
-observed outcomes.
+Originally drafted 2026-04-17 pre-data. Updated 2026-04-21 after
+168-game paired analysis: S4 section added, S3 retraction noted,
+Phase 4 unlock declared. Thresholds below reflect both the
+original pre-data anchoring and subsequent empirical calibration.
 
 Addresses §3.1 of `THESIS_open_questions.md`. Once finalized, fold
 into `THESIS.md` under Success Criteria.

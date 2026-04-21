@@ -451,3 +451,29 @@ position management conclusions, false-summit exit analysis,
 period/spread effects, and annual EV projections into a single
 actionable reference. Companion to STRATEGY3_SPEC.md. CLAUDE.md
 pointers updated.
+
+## 2026-04-21 — Phase 3B formal: COMPLETE
+
+168 games paired via ticker-matcher batch infrastructure (165
+competitive, |spread| ≤ 6, dates 2026-02-20 → 2026-04-15).
+Realized spread $0.01 median. Three strategies validated for
+Phase 4a deployment:
+
+- **S1 bilateral:** +$1,608/yr. Confirmed on Kalshi data.
+- **S4A dip-recovery:** +$1,886/yr. Best single strategy.
+  Spec: `docs/STRATEGY4_SPEC.md`.
+- **S3 filtered:** +$578–$825/yr. Holdout-validated (4/6
+  seeds). Spec: `docs/STRATEGY3_SPEC.md` §8.
+
+Strategy 2 formally killed (−$18.40 blended net on FanDuel).
+Strategy 3 naive rule retracted (−$4.57 true EV per entry).
+Phase 4a unlocked.
+
+## 2026-04-21 — Docs health check + cleanup
+
+Seven files updated to resolve contradictions accumulated
+during the rapid S3→S4 pivot session. STRATEGY3_SPEC.md §2/§6/§8
+rewritten, KILL_CRITERIA S4 section added, THESIS.md updated to
+four strategy layers, CLAUDE.md Phase 3B completion framing,
+ROADMAP deduplication, THESIS_open_questions consolidated
+resolution entry. SESSION_CONTEXT.md fully rewritten.

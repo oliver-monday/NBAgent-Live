@@ -64,8 +64,8 @@ until research produces a validated strategy spec.** Progress:
        (S1 +$1,608, S4A +$1,886, S3-filtered +$578–$825),
        combined ~$4,072–$4,319/yr.
    - Phase 3B formal COMPLETE (see above).
-4. **Phase 4** — Live decision engine. Not scoped until
-   Phase 3 produces a validated strategy spec.
+4. **Phase 4** — Live decision engine. **Phase 4a unlocked
+   2026-04-21.** Scoping in progress.
 
 **Parallel track — Phase O:** Odds API integration partially
 executed (sportsbook backfill + timeseries scrape consumed

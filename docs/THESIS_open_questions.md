@@ -16,7 +16,7 @@ strategy spec, this document gets synthesized: surviving open items
 either fold into the spec's caveats or graduate into the research
 log as findings.
 
-Last updated: 2026-04-17.
+Last updated: 2026-04-21.
 
 ---
 
