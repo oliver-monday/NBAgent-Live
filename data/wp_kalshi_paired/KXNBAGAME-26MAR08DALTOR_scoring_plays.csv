@@ -1,0 +1,117 @@
+play_wallclock_utc,game_seconds_elapsed,period,game_clock,play_text,score_value,scoring_team_is_fav,fav_score_after,dog_score_after,score_margin_after,fav_wp_before,fav_wp_after,wp_delta,kalshi_price_before,kalshi_price_after,kalshi_price_delta,wp_vs_kalshi_reaction_diff
+2026-03-08 23:12:21+00:00,22.0,1,11:38,Brandon Ingram makes tip in dunk,2,True,2,0,2,0.634,0.661,0.027000000000000024,0.92,0.93,0.010000000000000009,0.017000000000000015
+2026-03-08 23:12:41+00:00,44.0,1,11:16,P.J. Washington makes 22-foot three point jumper (Cooper Flagg assists),3,False,2,3,-1,0.661,0.613,-0.04800000000000004,0.92,0.93,0.010000000000000009,-0.05800000000000005
+2026-03-08 23:13:22+00:00,86.0,1,10:34,Max Christie makes 18-foot step back jumpshot (Daniel Gafford assists),2,False,2,5,-3,0.583,0.563,-0.020000000000000018,0.9299999999999999,0.93,1.1102230246251565e-16,-0.02000000000000013
+2026-03-08 23:13:40+00:00,104.0,1,10:16,Scottie Barnes makes 23-foot three point jumper (Brandon Ingram assists),3,True,5,5,0,0.563,0.613,0.050000000000000044,0.92,0.92,0.0,0.050000000000000044
+2026-03-08 23:13:52+00:00,116.0,1,10:04,Scottie Barnes makes 1-foot driving dunk,2,True,7,5,2,0.633,0.659,0.026000000000000023,0.92,0.92,0.0,0.026000000000000023
+2026-03-08 23:14:11+00:00,135.0,1,9:45,Jakob Poeltl makes layup (RJ Barrett assists),2,True,9,5,4,0.68,0.701,0.020999999999999908,0.93,0.92,-0.010000000000000009,0.030999999999999917
+2026-03-08 23:14:46+00:00,142.0,1,9:38,Khris Middleton makes free throw 1 of 2,1,False,9,6,3,0.669,0.664,-0.0050000000000000044,,0.92,,
+2026-03-08 23:15:00+00:00,142.0,1,9:38,Khris Middleton makes free throw 2 of 2,1,False,9,7,2,0.664,0.682,0.018000000000000016,0.92,0.92,0.0,0.018000000000000016
+2026-03-08 23:15:15+00:00,154.0,1,9:26,RJ Barrett makes driving layup,2,True,11,7,4,0.682,0.702,0.019999999999999907,0.93,0.92,-0.010000000000000009,0.029999999999999916
+2026-03-08 23:16:13+00:00,169.0,1,9:11,Daniel Gafford makes two point shot,2,False,11,9,2,0.702,0.681,-0.020999999999999908,0.92,0.92,0.0,-0.020999999999999908
+2026-03-08 23:16:20+00:00,176.0,1,9:04,Jakob Poeltl makes 11-foot floating jump shot (Brandon Ingram assists),2,True,13,9,4,0.681,0.702,0.020999999999999908,0.92,0.92,0.0,0.020999999999999908
+2026-03-08 23:16:46+00:00,203.0,1,8:37,Daniel Gafford makes alley oop dunk (Khris Middleton assists),2,False,13,11,2,0.702,0.681,-0.020999999999999908,0.92,0.92,0.0,-0.020999999999999908
+2026-03-08 23:16:58+00:00,214.0,1,8:26,Immanuel Quickley makes 14-foot driving floating jump shot (Scottie Barnes assists),2,True,15,11,4,0.681,0.702,0.020999999999999908,0.92,0.92,0.0,0.020999999999999908
+2026-03-08 23:17:20+00:00,236.0,1,8:04,Daniel Gafford makes dunk (Cooper Flagg assists),2,False,15,13,2,0.702,0.681,-0.020999999999999908,0.9299999999999999,0.94,0.010000000000000009,-0.030999999999999917
+2026-03-08 23:22:26+00:00,300.0,1,7:00,RJ Barrett makes free throw 1 of 2,1,True,16,13,3,0.695,0.718,0.02300000000000002,0.94,0.9299999999999999,-0.010000000000000009,0.03300000000000003
+2026-03-08 23:23:58+00:00,351.0,1,6:09,Scottie Barnes makes free throw 1 of 2,1,True,17,13,4,0.733,0.739,0.006000000000000005,0.94,0.94,0.0,0.006000000000000005
+2026-03-08 23:24:12+00:00,351.0,1,6:09,Scottie Barnes makes free throw 2 of 2,1,True,18,13,5,0.739,0.724,-0.015000000000000013,0.9299999999999999,0.92,-0.009999999999999898,-0.0050000000000001155
+2026-03-08 23:24:23+00:00,362.0,1,5:58,Naji Marshall makes driving layup,2,False,18,15,3,0.724,0.701,-0.02300000000000002,0.95,0.9299999999999999,-0.020000000000000018,-0.0030000000000000027
+2026-03-08 23:26:08+00:00,403.0,1,5:17,RJ Barrett makes dunk (Jamal Shead assists),2,True,20,15,5,0.701,0.724,0.02300000000000002,0.93,0.93,0.0,0.02300000000000002
+2026-03-08 23:26:23+00:00,418.0,1,5:02,Cooper Flagg makes alley oop dunk (Naji Marshall assists),2,False,20,17,3,0.724,0.701,-0.02300000000000002,0.92,0.93,0.010000000000000009,-0.03300000000000003
+2026-03-08 23:26:52+00:00,446.0,1,4:34,Marvin Bagley III makes driving layup (P.J. Washington assists),2,False,20,19,1,0.677,0.653,-0.02400000000000002,0.9299999999999999,0.94,0.010000000000000009,-0.03400000000000003
+2026-03-08 23:27:08+00:00,463.0,1,4:17,RJ Barrett makes driving layup,2,True,22,19,3,0.653,0.677,0.02400000000000002,0.95,0.94,-0.010000000000000009,0.03400000000000003
+2026-03-08 23:28:01+00:00,491.0,1,3:49,Gradey Dick makes running layup (Brandon Ingram assists),2,True,24,19,5,0.701,0.723,0.02200000000000002,0.92,0.92,0.0,0.02200000000000002
+2026-03-08 23:31:30+00:00,506.0,1,3:34,Brandon Williams makes two point shot (Klay Thompson assists),2,False,24,21,3,0.723,0.701,-0.02200000000000002,0.94,0.95,0.010000000000000009,-0.03200000000000003
+2026-03-08 23:31:59+00:00,506.0,1,3:34,Brandon Williams makes free throw 1 of 1,1,False,24,22,2,0.658,0.676,0.018000000000000016,0.94,0.95,0.010000000000000009,0.008000000000000007
+2026-03-08 23:32:23+00:00,527.0,1,3:13,Ja'Kobe Walter makes driving layup (Gradey Dick assists),2,True,26,22,4,0.676,0.701,0.02499999999999991,0.95,0.96,0.010000000000000009,0.014999999999999902
+2026-03-08 23:33:41+00:00,552.0,1,2:48,Naji Marshall makes free throw 1 of 2,1,False,26,23,3,0.664,0.659,-0.0050000000000000044,0.98,0.97,-0.010000000000000009,0.0050000000000000044
+2026-03-08 23:34:01+00:00,552.0,1,2:48,Naji Marshall makes free throw 2 of 2,1,False,26,24,2,0.659,0.677,0.018000000000000016,0.99,0.98,-0.010000000000000009,0.028000000000000025
+2026-03-08 23:34:45+00:00,595.0,1,2:05,Gradey Dick makes two point shot,2,True,28,24,4,0.677,0.703,0.025999999999999912,0.98,0.98,0.0,0.025999999999999912
+2026-03-08 23:36:05+00:00,633.0,1,1:27,Naji Marshall makes 1-foot layup (Brandon Williams assists),2,False,28,26,2,0.701,0.676,-0.02499999999999991,0.98,0.99,0.010000000000000009,-0.03499999999999992
+2026-03-08 23:36:12+00:00,640.0,1,1:20,Ja'Kobe Walter makes 1-foot dunk (Scottie Barnes assists),2,True,30,26,4,0.676,0.702,0.025999999999999912,0.99,0.99,0.0,0.025999999999999912
+2026-03-08 23:36:46+00:00,673.5,1,46.5,Gradey Dick makes 16-foot jumper (Sandro Mamukelashvili assists),2,True,32,26,6,0.724,0.746,0.02200000000000002,0.98,0.98,0.0,0.02200000000000002
+2026-03-08 23:38:03+00:00,692.4,1,27.6,Gradey Dick makes free throw 2 of 2,1,True,33,26,7,0.768,0.768,0.0,0.97,0.97,0.0,0.0
+2026-03-08 23:38:27+00:00,712.8,1,7.2,Daniel Gafford makes two point shot,2,False,33,28,5,0.769,0.745,-0.02400000000000002,0.98,0.98,0.0,-0.02400000000000002
+2026-03-08 23:39:23+00:00,712.8,1,7.2,Daniel Gafford makes free throw 1 of 1,1,False,33,29,4,0.71,0.723,0.013000000000000012,0.98,0.99,0.010000000000000009,0.0030000000000000027
+2026-03-08 23:39:30+00:00,718.4,1,1.6,Immanuel Quickley makes 28-foot three pointer,3,True,36,29,7,0.723,0.769,0.04600000000000004,0.98,0.98,0.0,0.04600000000000004
+2026-03-08 23:43:20+00:00,762.0,2,11:18,Brandon Williams makes 23-foot three point jumper (Daniel Gafford assists),3,False,36,32,4,0.77,0.727,-0.04300000000000004,0.97,0.97,0.0,-0.04300000000000004
+2026-03-08 23:44:26+00:00,815.0,2,10:25,Ja'Kobe Walter makes 4-foot layup (Sandro Mamukelashvili assists),2,True,38,32,6,0.727,0.748,0.02100000000000002,0.98,0.98,0.0,0.02100000000000002
+2026-03-08 23:44:52+00:00,815.0,2,10:25,Ja'Kobe Walter makes free throw 1 of 1,1,True,39,32,7,0.786,0.77,-0.016000000000000014,,0.98,,
+2026-03-08 23:46:43+00:00,859.0,2,9:41,RJ Barrett makes layup (Ja'Kobe Walter assists),2,True,41,32,9,0.791,0.81,0.019000000000000017,0.98,0.98,0.0,0.019000000000000017
+2026-03-08 23:48:42+00:00,926.0,2,8:34,Khris Middleton makes two point shot,2,False,41,34,7,0.812,0.794,-0.018000000000000016,0.98,0.98,0.0,-0.018000000000000016
+2026-03-08 23:48:47+00:00,933.0,2,8:27,Sandro Mamukelashvili makes 24-foot three point jumper (Scottie Barnes assists),3,True,44,34,10,0.794,0.832,0.03799999999999992,0.98,0.99,0.010000000000000009,0.027999999999999914
+2026-03-08 23:49:31+00:00,976.0,2,7:44,Sandro Mamukelashvili makes two point shot (RJ Barrett assists),2,True,46,34,12,0.852,0.867,0.015000000000000013,0.98,0.99,0.010000000000000009,0.0050000000000000044
+2026-03-08 23:53:39+00:00,1029.0,2,6:51,RJ Barrett makes running layup (Ja'Kobe Walter assists),2,True,48,34,14,0.884,0.899,0.015000000000000013,0.99,0.99,0.0,0.015000000000000013
+2026-03-08 23:54:36+00:00,1086.0,2,5:54,RJ Barrett makes 8-foot driving floating jump shot (Jakob Poeltl assists),2,True,50,34,16,0.913,0.924,0.01100000000000001,0.99,0.98,-0.010000000000000009,0.02100000000000002
+2026-03-08 23:56:49+00:00,1127.0,2,5:13,P.J. Washington makes free throw 2 of 2,1,False,50,35,15,0.926,0.927,0.0010000000000000009,0.99,,,
+2026-03-08 23:57:54+00:00,1189.0,2,4:11,Daniel Gafford makes layup (Cooper Flagg assists),2,False,50,37,13,0.917,0.905,-0.01200000000000001,,0.99,,
+2026-03-09 00:00:11+00:00,2370.0,4,8:30,P.J. Washington makes 11-foot two point shot,2,True,101,76,25,0.892,0.999,0.10699999999999998,,0.99,,
+2026-03-09 00:00:28+00:00,2387.0,4,8:13,Daniel Gafford makes dunk (Cooper Flagg assists),2,False,101,78,23,0.999,0.999,0.0,,,,
+2026-03-09 00:02:00+00:00,2459.0,4,7:01,Marvin Bagley III makes 1-foot layup (P.J. Washington assists),2,True,101,80,21,0.906,0.999,0.09299999999999997,,0.99,,
+2026-03-09 00:02:26+00:00,2486.0,4,6:34,Immanuel Quickley makes 23-foot three point jumper (Scottie Barnes assists),3,True,104,80,24,0.999,0.999,0.0,,0.99,,
+2026-03-09 00:03:00+00:00,2520.0,4,6:00,Jakob Poeltl makes dunk (RJ Barrett assists),2,True,106,80,26,0.999,0.999,0.0,,0.99,,
+2026-03-09 00:03:19+00:00,1261.0,2,2:59,Jakob Poeltl makes reverse layup (Brandon Ingram assists),2,False,52,37,15,0.999,0.92,-0.07899999999999996,,,,
+2026-03-09 00:03:21+00:00,2540.0,4,5:40,Cooper Flagg makes tip shot,2,False,106,82,24,0.999,0.999,0.0,,,,
+2026-03-09 00:04:41+00:00,1315.0,2,2:05,Daniel Gafford makes dunk,2,False,52,39,13,0.923,0.91,-0.013000000000000012,,0.99,,
+2026-03-09 00:04:52+00:00,1328.0,2,1:52,Scottie Barnes makes 19-foot jumper (Immanuel Quickley assists),2,False,54,39,15,0.999,0.924,-0.07499999999999996,0.99,,,
+2026-03-09 00:05:00+00:00,2566.0,4,5:14,Brandon Ingram makes free throw 2 of 2,1,True,107,82,25,0.924,0.999,0.07499999999999996,,,,
+2026-03-09 00:05:07+00:00,1343.0,2,1:37,Cooper Flagg makes 11-foot pullup jump shot,2,False,54,41,13,0.999,0.911,-0.08799999999999997,,,,
+2026-03-09 00:05:27+00:00,1363.0,2,1:17,RJ Barrett makes 27-foot three point jumper (Brandon Ingram assists),3,False,57,41,16,0.999,0.936,-0.06299999999999994,,0.99,,
+2026-03-09 00:06:08+00:00,2578.0,4,5:02,Brandon Williams makes free throw 2 of 2,1,True,107,83,24,0.92,0.999,0.07899999999999996,,,,
+2026-03-09 00:06:31+00:00,2599.0,4,4:41,Ryan Nembhard makes running layup,2,False,107,85,22,0.999,0.999,0.0,0.99,,,
+2026-03-09 00:06:43+00:00,2611.0,4,4:29,Jakob Poeltl makes 12-foot floating jump shot (Immanuel Quickley assists),2,True,109,85,24,0.937,0.999,0.061999999999999944,,0.99,,
+2026-03-09 00:06:50+00:00,1389.2,2,50.8,Cooper Flagg makes free throw 2 of 2,1,False,57,42,15,0.999,0.938,-0.061000000000000054,0.99,0.99,0.0,-0.061000000000000054
+2026-03-09 00:08:06+00:00,1437.1,2,2.9,Naji Marshall makes 1-foot layup (Cooper Flagg assists),2,False,57,44,13,0.928,0.917,-0.01100000000000001,0.99,,,
+2026-03-09 00:10:36+00:00,2654.0,4,3:46,Brandon Williams makes driving layup (Ryan Nembhard assists),2,False,109,87,22,0.999,0.999,0.0,,,,
+2026-03-09 00:11:03+00:00,2654.0,4,3:46,Brandon Williams makes free throw 1 of 1,1,False,109,88,21,0.999,0.999,0.0,0.99,0.99,0.0,0.0
+2026-03-09 00:11:20+00:00,2669.0,4,3:31,Sandro Mamukelashvili makes layup (Ja'Kobe Walter assists),2,True,111,88,23,0.999,0.999,0.0,,,,
+2026-03-09 00:12:24+00:00,2707.0,4,2:53,Garrett Temple makes free throw 1 of 2,1,True,112,88,24,0.999,0.999,0.0,0.99,,,
+2026-03-09 00:13:02+00:00,2716.0,4,2:44,Brandon Williams makes 18-foot jumper (Ryan Nembhard assists),2,False,112,90,22,0.999,0.999,0.0,,,,
+2026-03-09 00:14:40+00:00,2763.0,4,1:57,Sandro Mamukelashvili makes free throw 1 of 2,1,True,113,90,23,0.999,0.999,0.0,0.99,,,
+2026-03-09 00:15:11+00:00,2777.0,4,1:43,Ja'Kobe Walter makes running dunk,2,True,115,90,25,0.999,0.999,0.0,,,,
+2026-03-09 00:16:01+00:00,2785.0,4,1:35,Garrett Temple makes free throw 1 of 2,1,True,116,90,26,0.999,0.999,0.0,,,,
+2026-03-09 00:16:17+00:00,2785.0,4,1:35,Garrett Temple makes free throw 2 of 2,1,True,117,90,27,0.999,0.999,0.0,0.99,0.99,0.0,0.0
+2026-03-09 00:17:18+00:00,2803.0,4,1:17,Ja'Kobe Walter makes free throw 1 of 2,1,True,118,90,28,0.999,0.999,0.0,,0.99,,
+2026-03-09 00:17:32+00:00,2803.0,4,1:17,Ja'Kobe Walter makes free throw 2 of 2,1,True,119,90,29,0.999,0.999,0.0,0.99,0.99,0.0,0.0
+2026-03-09 00:18:20+00:00,2850.1,4,29.9,Gradey Dick makes 25-foot three point step back jumpshot (Ja'Kobe Walter assists),3,True,122,90,32,0.999,0.999,0.0,,0.99,,
+2026-03-09 00:19:14+00:00,2869.2,4,10.8,Brandon Williams makes free throw 1 of 2,1,False,122,91,31,0.999,0.999,0.0,,0.99,,
+2026-03-09 00:19:33+00:00,2869.2,4,10.8,Brandon Williams makes free throw 2 of 2,1,False,122,92,30,0.999,0.999,0.0,,,,
+2026-03-09 00:23:58+00:00,1466.0,3,11:34,Cooper Flagg makes 20-foot pullup jump shot (P.J. Washington assists),2,False,57,46,11,0.907,0.89,-0.017000000000000015,,,,
+2026-03-09 00:24:18+00:00,1485.0,3,11:15,RJ Barrett makes driving layup (Jakob Poeltl assists),2,True,59,46,13,0.89,0.909,0.019000000000000017,,,,
+2026-03-09 00:24:32+00:00,1500.0,3,11:00,Daniel Gafford makes tip in dunk,2,False,59,48,11,0.909,0.892,-0.017000000000000015,,,,
+2026-03-09 00:25:25+00:00,1518.0,3,10:42,Brandon Ingram makes 11-foot pullup jump shot (Immanuel Quickley assists),2,True,61,48,13,0.891,0.908,0.017000000000000015,,,,
+2026-03-09 00:25:44+00:00,1536.0,3,10:24,Khris Middleton makes 20-foot step back jumpshot (Daniel Gafford assists),2,False,61,50,11,0.908,0.893,-0.015000000000000013,,,,
+2026-03-09 00:26:05+00:00,1557.0,3,10:03,Immanuel Quickley makes driving layup (Jakob Poeltl assists),2,True,63,50,13,0.893,0.91,0.017000000000000015,,,,
+2026-03-09 00:26:52+00:00,1581.0,3,9:39,Jakob Poeltl makes tip shot,2,True,65,50,15,0.925,0.937,0.01200000000000001,,,,
+2026-03-09 00:27:01+00:00,1592.0,3,9:28,Cooper Flagg makes 8-foot driving floating jump shot,2,False,65,52,13,0.937,0.926,-0.01100000000000001,,,,
+2026-03-09 00:27:34+00:00,1623.0,3,8:57,Daniel Gafford makes tip shot,2,False,65,54,11,0.913,0.898,-0.015000000000000013,,,,
+2026-03-09 00:31:24+00:00,1657.0,3,8:23,Jakob Poeltl makes 1-foot layup (Scottie Barnes assists),2,True,67,54,13,0.899,0.915,0.016000000000000014,,,,
+2026-03-09 00:31:55+00:00,1686.0,3,7:54,RJ Barrett makes driving layup (Immanuel Quickley assists),2,True,69,54,15,0.931,0.943,0.0119999999999999,,,,
+2026-03-09 00:32:19+00:00,1686.0,3,7:54,RJ Barrett makes free throw 1 of 1,1,True,70,54,16,0.958,0.951,-0.007000000000000006,,,,
+2026-03-09 00:33:06+00:00,1732.0,3,7:08,Scottie Barnes makes 22-foot three point jumper (Immanuel Quickley assists),3,True,73,54,19,0.962,0.975,0.013000000000000012,,,,
+2026-03-09 00:33:45+00:00,1772.0,3,6:28,Brandon Ingram makes 6-foot running pullup jump shot (Immanuel Quickley assists),2,True,75,54,21,0.982,0.985,0.0030000000000000027,,,,
+2026-03-09 00:36:53+00:00,1785.0,3,6:15,Klay Thompson makes layup (Marvin Bagley III assists),2,False,75,56,19,0.985,0.982,-0.0030000000000000027,,,,
+2026-03-09 00:37:25+00:00,1817.0,3,5:43,P.J. Washington makes 27-foot three point jumper (Cooper Flagg assists),3,False,75,59,16,0.978,0.967,-0.01100000000000001,,,,
+2026-03-09 00:37:38+00:00,1829.0,3,5:31,Jakob Poeltl makes 3-foot hook shot (Brandon Ingram assists),2,True,77,59,18,0.967,0.974,0.007000000000000006,,,,
+2026-03-09 00:39:36+00:00,1873.0,3,4:47,Brandon Williams makes free throw 1 of 2,1,False,77,60,17,0.966,0.964,-0.0020000000000000018,,,,
+2026-03-09 00:40:00+00:00,1873.0,3,4:47,Brandon Williams makes free throw 2 of 2,1,False,77,61,16,0.964,0.969,0.0050000000000000044,,,,
+2026-03-09 00:42:19+00:00,1926.0,3,3:54,Brandon Ingram makes free throw 1 of 2,1,True,78,61,17,0.981,0.982,0.0010000000000000009,,,,
+2026-03-09 00:42:36+00:00,1926.0,3,3:54,Brandon Ingram makes free throw 2 of 2,1,True,79,61,18,0.982,0.978,-0.0040000000000000036,,,,
+2026-03-09 00:42:59+00:00,1947.0,3,3:33,Brandon Ingram makes 20-foot running pullup jump shot (Gradey Dick assists),2,True,81,61,20,0.984,0.987,0.0030000000000000027,,,,
+2026-03-09 00:43:51+00:00,1964.0,3,3:16,Marvin Bagley III makes free throw 1 of 2,1,False,81,62,19,0.982,0.981,-0.0010000000000000009,,,,
+2026-03-09 00:44:12+00:00,1964.0,3,3:16,Marvin Bagley III makes free throw 2 of 2,1,False,81,63,18,0.981,0.985,0.0040000000000000036,,,,
+2026-03-09 00:46:53+00:00,2014.0,3,2:26,Scottie Barnes makes 11-foot two point shot (Jamal Shead assists),2,True,83,63,20,0.985,0.989,0.0040000000000000036,,,,
+2026-03-09 00:47:09+00:00,2030.0,3,2:10,Klay Thompson makes 28-foot three point jumper (Marvin Bagley III assists),3,False,83,66,17,0.989,0.983,-0.006000000000000005,,,,
+2026-03-09 00:47:20+00:00,2041.0,3,1:59,Sandro Mamukelashvili makes 24-foot three point jumper (Jamal Shead assists),3,True,86,66,20,0.983,0.99,0.007000000000000006,,,,
+2026-03-09 00:49:10+00:00,2101.9,3,58.1,Sandro Mamukelashvili makes driving layup (Jamal Shead assists),2,True,88,66,22,0.994,0.995,0.0010000000000000009,,,,
+2026-03-09 00:53:31+00:00,2195.0,4,11:25,Cooper Flagg makes 25-foot three point jumper (Klay Thompson assists),3,False,88,69,19,0.996,0.994,-0.0020000000000000018,,,,
+2026-03-09 00:53:46+00:00,2210.0,4,11:10,RJ Barrett makes 5-foot two point shot (Sandro Mamukelashvili assists),2,True,90,69,21,0.994,0.996,0.0020000000000000018,,,,
+2026-03-09 00:54:01+00:00,2224.0,4,10:56,Cooper Flagg makes 8-foot driving floating jump shot,2,False,90,71,19,0.996,0.995,-0.0010000000000000009,,,,
+2026-03-09 00:54:31+00:00,2224.0,4,10:56,Cooper Flagg makes free throw 1 of 1,1,False,90,72,18,0.99,0.993,0.0030000000000000027,,,,
+2026-03-09 00:55:06+00:00,2254.0,4,10:26,RJ Barrett makes 25-foot three point jumper (Immanuel Quickley assists),3,True,93,72,21,0.993,0.996,0.0030000000000000027,,,,
+2026-03-09 00:55:42+00:00,2290.0,4,9:50,Scottie Barnes makes 6-foot driving floating jump shot,2,True,95,72,23,0.998,0.998,0.0,,,,
+2026-03-09 00:56:02+00:00,2309.0,4,9:31,RJ Barrett makes 24-foot running jump shot (Immanuel Quickley assists),3,True,98,72,26,0.999,0.999,0.0,,,,
+2026-03-09 00:59:05+00:00,2312.0,4,9:28,Scottie Barnes makes technical free throw,1,True,99,72,27,0.999,0.999,0.0,,,,
+2026-03-09 00:59:32+00:00,2332.0,4,9:08,Daniel Gafford makes dunk (Max Christie assists),2,False,99,74,25,0.999,0.999,0.0,,,,
+2026-03-09 00:59:55+00:00,2354.0,4,8:46,RJ Barrett makes 1-foot reverse layup (Jakob Poeltl assists),2,True,101,74,27,0.999,0.999,0.0,,,,
