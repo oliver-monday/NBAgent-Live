@@ -1,14 +1,14 @@
 name: kalshi_logger
 
+# DEPRECATED schedule (2026-04-21) — logger now runs locally.
+# GH Actions cron was unreliable for the time-window coverage the
+# logger requires (delayed scheduled runs caused catastrophic game
+# gaps), and per-game snapshot volume was straining storage limits.
+# File preserved with workflow_dispatch only so ad-hoc runs remain
+# possible if the local setup is ever down.
+
 on:
-  schedule:
-    # Three daily blocks, each running up to ~5h15m.
-    # Self-terminates early if no active NBA markets for 15 min.
-    # Times are UTC. April 2026 = PDT (UTC-7).
-    - cron: '30 13 * * *'   # 06:30 PT — morning block (weekend early games)
-    - cron: '30 18 * * *'   # 11:30 PT — midday block (weekend mid + weekday 2pm ET)
-    - cron: '30 23 * * *'   # 16:30 PT — evening block (weekday 7pm ET tips)
-  workflow_dispatch:        # manual trigger for ad-hoc runs
+  workflow_dispatch:        # manual trigger only — scheduled runs disabled
 
 concurrency:
   group: kalshi_logger

@@ -203,3 +203,15 @@ flow-vs-game-state disambiguator for §6.6.
   research phase stabilizes.
 - **Per-game file split** — landed 2026-04-19. Monitor file
   sizes and git repo growth.
+- **Forward-collection cron — LANDED (2026-04-21).** Nightly
+  `forward_collection.yml` runs `analysis/forward_collect.py`
+  at 10:00 UTC (03:00 PT) against yesterday's scoreboard,
+  fetches ESPN PBP/WP + Kalshi trade tape for each completed
+  game, writes per-game timeseries/plays under
+  `data/wp_kalshi_paired/` and an audit log at
+  `data/wp_kalshi_paired/forward_runs/<date>.log`. Weekly
+  `forward_collection_weekly.yml` (Mon 11:00 UTC) refreshes
+  `matched_games.csv` and aggregate summaries. Logger workflow
+  schedule stripped — `workflow_dispatch` only. Watch items:
+  first nightly run committing as expected; off-night log
+  behavior; repo growth from committed paired data.

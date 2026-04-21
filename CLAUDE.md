@@ -120,14 +120,23 @@ docs/
 
 ## Workflow layout
 
-`kalshi_logger.yml` runs three daily blocks (06:30 / 11:30 / 16:30 PT),
-each capped at ~5h15m to stay under GitHub Actions' 6h job limit. The
-process self-terminates after 15 min if no active NBA game markets are
-found, so off-days cost almost nothing.
-
-Data is committed back to the repo periodically (every 5 min by default).
-`[skip ci]` is used in the commit message to avoid triggering other
-workflows.
+- **`kalshi_logger.yml`** — runs locally on Oliver's machine
+  (not on GH Actions). The workflow file remains in-repo with
+  `workflow_dispatch` only; scheduled runs were stripped
+  2026-04-21 because GH Actions cron delays caused catastrophic
+  game-coverage gaps. Data is committed back periodically
+  (every 5 min by default) with `[skip ci]`.
+- **`forward_collection.yml`** — nightly cron on GH Actions at
+  10:00 UTC (03:00 PT). Runs `analysis/forward_collect.py`
+  against yesterday's scoreboard, pulling ESPN PBP/WP + Kalshi
+  trade tape for each settled game into
+  `data/wp_kalshi_paired/`. Per-night audit log at
+  `data/wp_kalshi_paired/forward_runs/<date>.log`. Protects
+  against Kalshi's ~60-day trade-tape retention cliff.
+- **`forward_collection_weekly.yml`** — Monday 11:00 UTC.
+  Refreshes `matched_games.csv` (ticker_matcher) and aggregate
+  summaries (wp_vs_kalshi_aggregate) over the accumulated
+  paired dataset.
 
 ## Key principles
 

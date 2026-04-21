@@ -1,0 +1,69 @@
+name: forward_collection_weekly
+
+# Weekly refresh of consolidated indexes over the accumulated paired
+# dataset. The nightly forward_collection workflow writes per-game
+# timeseries/plays/cache files directly; this job rebuilds the
+# cross-game artifacts that are cheaper to refresh in bulk than on
+# every nightly run.
+#
+# Outputs refreshed:
+#   - data/wp_kalshi_paired/matched_games.csv
+#     (ticker_matcher.py: full ESPN↔Kalshi join over nba_master)
+#   - data/wp_kalshi_paired/aggregate_summary.csv
+#   - docs/analysis_outputs/wp_vs_kalshi_aggregate.md
+
+on:
+  schedule:
+    # 11:00 UTC Monday = 04:00 PDT / 03:00 PST — after Sunday night's
+    # forward_collection run has committed.
+    - cron: '0 11 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: forward_collection_weekly
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TZ: America/Los_Angeles
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Refresh matched_games.csv
+        run: python -m analysis.ticker_matcher
+
+      - name: Refresh aggregate summaries
+        run: python -m analysis.wp_vs_kalshi_aggregate
+
+      - name: Commit refreshed indexes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/wp_kalshi_paired/ docs/analysis_outputs/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          STAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          git commit -m "[skip ci] Weekly index refresh $STAMP"
+          git pull --rebase origin main
+          git push origin main

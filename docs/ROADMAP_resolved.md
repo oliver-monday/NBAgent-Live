@@ -1,6 +1,41 @@
 # Resolved Roadmap
 
-## 2026-04-16 — Phase 0: Repo bootstrap
+## 2026-04-21 — Infrastructure: Forward-collection cron + logger schedule deprecation
+
+Addresses the ~60-day Kalshi trade-tape retention cliff by
+capturing each night's settled games within a day of settlement,
+before the tape becomes unreachable. New pieces:
+
+- `analysis/forward_collect.py` — orchestrator. Resolves
+  yesterday (America/Los_Angeles) by default, calls
+  `scoreboard_games` + `run_single_game` for each game (no
+  pre-match CSV required — scoreboard drives discovery).
+  Writes per-night audit log to
+  `data/wp_kalshi_paired/forward_runs/<date>.log` always,
+  including off-nights (explicit "no games" log so silent
+  cron failures on real game days are visible).
+- `.github/workflows/forward_collection.yml` — nightly cron at
+  10:00 UTC (03:00 PT). Commits new paired data with
+  `[skip ci]`. `workflow_dispatch` supports a `--date` input for
+  backfills.
+- `.github/workflows/forward_collection_weekly.yml` — Monday
+  11:00 UTC refresh of cross-game indexes
+  (`matched_games.csv` via `ticker_matcher.py` and aggregate
+  summaries via `wp_vs_kalshi_aggregate.py`). Decoupled from
+  nightly: nightly stays fast, weekly handles the growing-cost
+  indexes.
+- `.github/workflows/kalshi_logger.yml` — `schedule:` block
+  stripped; `workflow_dispatch` retained. Logger runs locally
+  now; GH Actions cron delay caused catastrophic game-coverage
+  gaps during the research window.
+
+Architecture note: the nightly path bypasses `matched_games.csv`
+entirely — `wp_vs_kalshi_paired`'s `--all` mode resolves games
+directly from ESPN's scoreboard, so `matched_games.csv` has been
+repositioned as a weekly-refreshed index rather than a
+nightly-updated canonical record.
+
+
 Created NBAgent-Live repo structure: logger/, data/orderbook_snapshots/, docs/, .github/workflows/. Bootstrapped CLAUDE.md, README.md, RESEARCH_LOG.md seed.
 
 ## 2026-04-16 — Phase 1: Kalshi orderbook logger

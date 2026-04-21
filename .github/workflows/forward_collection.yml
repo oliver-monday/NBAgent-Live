@@ -1,0 +1,73 @@
+name: forward_collection
+
+# Nightly forward-collection of yesterday's NBA games. Beats Kalshi's
+# ~60-day trade-tape retention cliff by pulling ESPN PBP/WP + Kalshi
+# trades within a day of settlement.
+#
+# Scope: a single day (yesterday in America/Los_Angeles). If a run is
+# missed (e.g., Actions outage), re-dispatch manually with --date via
+# workflow_dispatch input, or extend the cron to a rolling window if a
+# failure pattern emerges.
+
+on:
+  schedule:
+    # 10:00 UTC = 03:00 PDT / 02:00 PST — safely after the latest
+    # prior-evening NBA game settles on Kalshi and ESPN finalizes PBP.
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Target date YYYY-MM-DD (defaults to yesterday PT)'
+        required: false
+        default: ''
+
+concurrency:
+  group: forward_collection
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TZ: America/Los_Angeles
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run forward collection
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            python -m analysis.forward_collect --date "${{ github.event.inputs.date }}"
+          else
+            python -m analysis.forward_collect
+          fi
+
+      - name: Commit new paired data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/wp_kalshi_paired/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          STAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          git commit -m "[skip ci] Forward collection $STAMP"
+          git pull --rebase origin main
+          git push origin main
