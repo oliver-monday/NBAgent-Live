@@ -1563,6 +1563,13 @@ def main() -> int:
              "skips per-game markdown reports; resumes interrupted batches. "
              "Incompatible with --espn-game-id / --kalshi-event-ticker.",
     )
+    parser.add_argument(
+        "--min-date", type=str, default=None,
+        help="Batch-mode filter: skip rows in matched_games.csv whose "
+             "game_date is earlier than this YYYY-MM-DD. Use this to "
+             "avoid Kalshi's ~60-day trade-tape retention cliff "
+             "(typical value: 70 days before today, e.g. 2026-02-01).",
+    )
     args = parser.parse_args()
 
     def _ok(rv: dict | int) -> int:
@@ -1580,7 +1587,7 @@ def main() -> int:
                 "--batch is incompatible with --espn-game-id / "
                 "--kalshi-event-ticker."
             )
-        return _run_batch(Path(args.batch))
+        return _run_batch(Path(args.batch), min_date=args.min_date)
 
     # Mode 1: full override — both game ID and event ticker explicit.
     if args.espn_game_id and args.kalshi_event_ticker and not args.run_all:
@@ -1647,7 +1654,7 @@ def main() -> int:
 
 # ---- Batch mode ---------------------------------------------------------
 
-def _run_batch(csv_path: Path) -> int:
+def _run_batch(csv_path: Path, min_date: str | None = None) -> int:
     """Read matched_games.csv and run analysis on each row.
 
     Behavior per prompt:
@@ -1656,6 +1663,10 @@ def _run_batch(csv_path: Path) -> int:
       - No per-game markdown reports (paired CSVs + caches only).
       - time.sleep(2.0) between games.
       - Errors isolated per-game; batch continues.
+      - Optional min_date (YYYY-MM-DD): skip rows with game_date earlier
+        than this threshold — used to sidestep Kalshi's ~60-day trade-
+        tape retention cliff, since older games return empty tapes and
+        waste batch time.
     """
     if not csv_path.exists():
         raise SystemExit(f"Batch CSV not found: {csv_path}")
@@ -1664,6 +1675,25 @@ def _run_batch(csv_path: Path) -> int:
     missing = required - set(df.columns)
     if missing:
         raise SystemExit(f"Batch CSV missing columns: {missing}")
+
+    if min_date is not None:
+        if "game_date" not in df.columns:
+            raise SystemExit(
+                "--min-date requires a 'game_date' column in the batch CSV."
+            )
+        # Validate min_date format by attempting a parse.
+        try:
+            datetime.strptime(min_date, "%Y-%m-%d")
+        except ValueError:
+            raise SystemExit(
+                f"--min-date must be YYYY-MM-DD, got: {min_date!r}"
+            )
+        before = len(df)
+        df = df[df["game_date"].astype(str) >= min_date].reset_index(drop=True)
+        log(
+            f"--min-date {min_date}: kept {len(df)} / {before} rows "
+            f"(dropped {before - len(df)} pre-cliff games)"
+        )
 
     total = len(df)
     n_ok = n_cached = n_fail = 0

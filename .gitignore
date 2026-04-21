@@ -15,5 +15,14 @@ data/pbp/*.jsonl
 # Kalshi orderbook snapshots (irreplaceable — backed up to personal cloud)
 data/orderbook_snapshots/
 
-# WP vs Kalshi paired analysis — raw API caches are large; CSVs + report committed
+# WP vs Kalshi paired analysis — raw API caches are large, gitignored.
 data/wp_kalshi_paired/*.json
+# Per-game derived CSVs (timeseries + scoring plays) are large, regenerable
+# from the JSON trade tapes via `python -m analysis.wp_vs_kalshi_paired --batch`.
+# The full-season Kalshi backfill (2026-04-21) pushed this past 180MB of CSVs
+# across ~400 games; gitignoring to stay inside GitHub's recommended repo size.
+# Named aggregate CSVs at the top level (matched_games.csv, aggregate_summary.csv,
+# sweep/grid/entries outputs from analyses) are NOT matched by this pattern and
+# remain tracked.
+data/wp_kalshi_paired/KXNBAGAME-*_timeseries.csv
+data/wp_kalshi_paired/KXNBAGAME-*_scoring_plays.csv

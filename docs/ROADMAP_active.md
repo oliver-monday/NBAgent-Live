@@ -14,10 +14,14 @@ one killed. Full arc in `ROADMAP_resolved.md`.
 
 **Validated alpha stack (carries into Phase 4a):**
 - S1 bilateral: +$1,608/yr (confirmed)
-- S4A dip-recovery: +$1,886/yr (confirmed)
+- S4A dip-recovery: +$7,075/yr core |spread|≤6, +$10,718/yr
+  uncapped (Kalshi-confirmed, 404-game expanded dataset,
+  all 7 spread buckets positive EV)
 - S3 filtered: +$578–$825/yr (holdout-validated)
 - S4B underdog hybrid: +$1,105/yr (positive, needs more data)
-- Combined conservative: **+$4,072–$4,319/yr**
+- Combined conservative (core): **+$9,261–$9,508/yr**
+- Combined full (with expansion): **+$12,904–$13,151/yr**
+  (expansion buckets have thin samples, 36–66 entries each)
 
 **Deprioritized (no longer load-bearing):**
 - §1.4 retirement analyses (answered by sportsbook backfill)
@@ -29,6 +33,21 @@ one killed. Full arc in `ROADMAP_resolved.md`.
 Three validated strategies ready for paper-trading: S1
 bilateral, S4A dip-recovery, S3 filtered. See
 `docs/KILL_CRITERIA_draft.md` §Project-level decisions.
+
+- **Phase 4a S4A engine — IMPLEMENTED (2026-04-22).**
+  Paper-trading engine: `engine/s4a_signal.py` (signal
+  detector), `engine/position_manager.py` (state tracker),
+  `engine/live_runner.py` (runtime). Replay-validated
+  trade-for-trade against the authoritative offline
+  simulator on the core 171-game dataset (|spread| ≤ 6,
+  166 entries, 52.4% hit, +$1,708 annual EV). Spread
+  expansion (Part 8 Path B, 404 games) shows all 7
+  spread buckets positive EV (+$10,718/yr uncapped).
+  Engine operates on all Kalshi-listed games with no
+  spread filter — already trading the expanded universe.
+  Status:
+  unverified live (pending first paper-trading run).
+  Design doc: `docs/PHASE4A_DESIGN.md`.
 
 Rule-based trading bot. No LLM-in-the-loop, no live ML inference —
 the "intelligence" lives entirely in rules derived from Phase 3

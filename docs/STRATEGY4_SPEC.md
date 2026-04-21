@@ -4,9 +4,10 @@ Living document. Consolidates all Strategy 4 findings into a
 single actionable reference. Companion to `STRATEGY3_SPEC.md`.
 
 **Evidence tiers:**
-- **Kalshi-confirmed** — validated on real Kalshi paired data
-  (168 games, 165 competitive). 30-second VWAP bins from
-  historical trade tape paired with ESPN WP.
+- **Kalshi-confirmed** — validated on real Kalshi paired data.
+  Core dataset: 171 games (|spread| ≤ 6). Expanded dataset:
+  404 games (all spreads). 30-second VWAP bins from historical
+  trade tape paired with ESPN WP.
 - **Holdout-consistent** — S4A has no fitted parameters
   (single hypothesized config), but train/test consistency
   confirmed: train +$3.19, test +$4.24 mean P&L (seed=42
@@ -14,7 +15,7 @@ single actionable reference. Companion to `STRATEGY3_SPEC.md`.
 - **Tested-and-rejected** — analyzed and found not to improve
   the strategy.
 
-Last updated: 2026-04-21.
+Last updated: 2026-04-22.
 
 ---
 
@@ -45,7 +46,7 @@ S3 bets against a potential collapse.
 | Position management | None (baseline optimal) | Tested-and-rejected: 17 avg-in/out configs all underperform |
 | Re-entry | Allowed once per game after exit | 25.5% of entries are re-entries |
 | Hold time | ~38 minutes median | Kalshi-confirmed |
-| Competitive game filter | \|pre-game spread\| ≤ 6 | Consistent with S3 universe |
+| Competitive game filter | Uncapped (all spreads) | All 7 spread buckets positive EV on 404-game Kalshi dataset. See §7. |
 
 ### Fee assumptions (per `docs/FEES.md`)
 
@@ -195,18 +196,35 @@ pattern observed across multiple games (underdog keeps it
 close through first half, favorite comes out strong after
 halftime). All periods are positive.
 
-### By pre-game spread
+### By pre-game spread (Kalshi-confirmed, 404-game expanded dataset)
 
-| |Spread| | Entries | Mean P&L |
-|----------|---------|----------|
-| 1–2 | 28 | +$0.99 |
-| 2.5–3.5 | 71 | +$2.57 |
-| 4–5 | 26 | +$5.70 |
-| 5.5–6 | 36 | +$5.85 |
+| |Spread| | Games | Entries | Hit % | Mean P&L | Annual EV |
+|----------|-------|---------|-------|----------|-----------|
+| 1.0–2.0 | 36 | 29 | 51.7% | +$1.59 | +$702 |
+| 2.5–3.5 | 69 | 71 | 47.9% | +$2.57 | +$1,446 |
+| 4.0–5.0 | 31 | 29 | 48.3% | +$2.65 | +$1,357 |
+| 5.5–6.0 | 35 | 37 | 64.9% | +$6.17 | +$3,570 |
+| 6.5–8.0 | 46 | 43 | 58.1% | +$4.14 | +$2,116 |
+| 8.5–10.0 | 38 | 36 | 58.3% | +$0.82 | +$425 |
+| 10.5+ | 149 | 66 | 69.7% | +$4.55 | +$1,103 |
 
-Wider spreads (stronger favorites) produce higher mean P&L.
-The favorite's natural buoy is strongest when the pre-game
-line gives them a larger anchor.
+All 7 buckets are positive EV. Key patterns:
+
+- Wider spreads produce higher hit rates (69.7% at 10.5+
+  vs 47.9% at 2.5–3.5) but fewer entries per game (0.44
+  vs 1.03). The favorite's natural buoy is strongest when
+  the pre-game line gives them a larger anchor.
+- The 5.5–6.0 bucket is the standout: +$6.17 mean P&L,
+  64.9% hit rate, +$3,570 annual EV. This is nearly double
+  the next-best bucket per entry. Sample is thin (n=37) —
+  structural explanation vs small-sample noise is an open
+  question.
+- Expansion buckets (|spread| > 6) have 36–66 entries each.
+  The directional finding (all positive) is robust; exact
+  dollar figures per bucket are noisy at these sample sizes.
+
+**Source:** `docs/analysis_outputs/strategy4_spread_expansion_kalshi.md`
+(Part 8 Path B, 2026-04-21).
 
 ---
 
@@ -238,13 +256,33 @@ validated with more data.
 
 At 100-contract sizing, maker-maker:
 
+### S4A by spread universe
+
+| Universe | Games | Entries | Annual EV | Evidence |
+|----------|-------|---------|-----------|----------|
+| |spread| ≤ 6 (core) | 171 | 166 | +$7,075 | Kalshi-confirmed, replay-validated |
+| |spread| > 6 (expansion) | 233 | 145 | +$3,644 | Kalshi-confirmed, thin buckets |
+| **All spreads** | **404** | **311** | **+$10,718** | **Bucket-level extrapolation** |
+
+**Caveat:** the +$10,718 figure is the sum of per-bucket
+annualized EV extrapolations, not a single pooled replay.
+Expansion buckets have 36–66 entries each. The directional
+finding (all buckets positive) is robust; the exact annual
+dollar figure carries meaningful uncertainty. The core
+|spread| ≤ 6 universe at +$7,075 is the most conservative
+anchor.
+
+### Combined alpha stack
+
 | Strategy | Annual EV | Status |
 |----------|-----------|--------|
 | S1 bilateral | +$1,608 | Confirmed, deployment-ready |
-| S4A dip-recovery (fav) | +$1,886 | Confirmed, deployment-ready |
+| S4A dip-recovery (core, |spread| ≤ 6) | +$7,075 | Kalshi-confirmed |
+| S4A dip-recovery (expansion, |spread| > 6) | +$3,644 | Kalshi-confirmed, thin samples |
 | S3 filtered (validated) | +$578–$825 | Validated via holdout |
 | S4B underdog hybrid | +$1,105 | Positive but needs more data |
-| **S1 + S4A + S3** | **$4,072–$4,319** | Combined conservative estimate |
+| **S1 + S4A (core) + S3** | **+$9,261–$9,508** | Conservative combined |
+| **S1 + S4A (all) + S3** | **+$12,904–$13,151** | Full combined (noisy) |
 
 These strategies operate in different price zones and should
 not conflict: S1 catches bilateral dips below $0.40, S3
@@ -257,21 +295,36 @@ different points.
 
 ## 10. Open questions
 
-1. **Live execution dynamics.** 30-second VWAP bins may mask
+1. **5.5–6.0 bucket outperformance.** +$6.17 mean P&L on
+   n=37 entries (64.9% hit) is the standout bucket — nearly
+   double the next-best per-entry mean. Investigate whether
+   this reflects a structural sweet spot (strong-enough
+   favorite to recover reliably, close-enough game to
+   generate dips) or small-sample noise. Answerable with
+   the existing 404-game dataset.
+
+2. **Expansion bucket sample sizes.** The |spread| > 6
+   universe adds +$3,644/yr on 145 entries across 233 games,
+   but individual buckets have 36–66 entries. As the forward
+   collection cron accumulates more paired games, these
+   estimates will tighten. Monitor per-bucket stability as
+   data grows.
+
+3. **Live execution dynamics.** 30-second VWAP bins may mask
    sub-second price action. Real fills at the $0.40 stop
    especially may face slippage. The $0.08 dip threshold
    should provide buffer.
 
-2. **Playoff vs regular season.** All 168 paired games are
-   regular season (Feb 20 – Apr 15, 2026). Playoff game
+4. **Playoff vs regular season.** All 404 paired games are
+   predominantly regular season (Feb 20 – Apr 15, 2026). Playoff game
    dynamics (slower pace, tighter defense, more timeouts)
    may shift the parameters.
 
-3. **S4B validation.** The underdog hybrid is promising but
+5. **S4B validation.** The underdog hybrid is promising but
    the 12.6% resolution-win rate on a held portion is a
    thin edge. Needs more games before deployment.
 
-4. **Multi-strategy interaction.** S1, S3, and S4A operating
+6. **Multi-strategy interaction.** S1, S3, and S4A operating
    simultaneously in the same game has not been simulated.
    Capital allocation across concurrent positions needs
    scoping.

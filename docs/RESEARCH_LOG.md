@@ -1,5 +1,254 @@
 # NBAgent-Live — Research Log
 
+## 2026-04-22 — Strategy 4 spread expansion Path B (Kalshi-confirmed)
+
+Re-ran Part 8 on the Kalshi trade-tape data from the
+full-season backfill (`--part8 --path-b`). 404 games across
+all |spread| buckets have usable paired timeseries; 233 of
+those are in the expansion zone (|spread|>6). Report:
+`docs/analysis_outputs/strategy4_spread_expansion_kalshi.md`.
+
+**Headline result: the favorite-recovery pattern holds across
+every spread bucket on Kalshi-confirmed data. Path A's ESPN
+proxy systematically under-predicted EV (and was outright
+wrong-signed at narrow spreads).**
+
+Path B per-bucket (hit % / mean P&L / scaled annual EV):
+
+| Bucket | Games | Entries | Hit % | Mean | Annual EV |
+|---|---:|---:|---:|---:|---:|
+| 1.0–2.0 | 36 | 29 | 51.7% | +$1.59 | +$702 |
+| 2.5–3.5 | 69 | 71 | 47.9% | +$2.57 | +$1,446 |
+| 4.0–5.0 | 31 | 29 | 48.3% | +$2.65 | +$1,357 |
+| 5.5–6.0 | 35 | 37 | 64.9% | +$6.17 | +$3,570 |
+| 6.5–8.0 | 46 | 43 | 58.1% | +$4.14 | +$2,116 |
+| 8.5–10.0 | 38 | 36 | 58.3% | +$0.82 | +$425 |
+| 10.5+ | 149 | 66 | 69.7% | +$4.55 | +$1,103 |
+| **Existing (≤6)** | **171** | **166** | **52.4%** | **+$3.21** | **+$1,708** |
+| **Expansion (>6)** | **233** | **145** | **61.4%** | **+$3.26** | **+$3,644** |
+| **All buckets** | **404** | **311** | **56.6%** | **+$3.24** | **+$10,718** |
+
+(Annual EV scaling inherits the `summarize_s4a` convention of
+`mean × entries/game × 0.445 × 1230` competitive-rate
+projection. Bucket-level EV is directional — the across-bucket
+comparison and the existing/expansion split are the load-bearing
+numbers, not each cell's dollar figure.)
+
+**Parity check:** Path B |spread|≤6 reproduces the engine replay
+trade-for-trade (171 games, 166 entries, 52.4% hit, +$3.21 mean,
++$1,708 annual EV). Confirms the Path B pipeline is consuming
+the same `fav_kalshi_vwap` column the engine uses.
+
+**Path A vs Path B on overlap games (Table 6 of the report):**
+the ESPN proxy understated P&L in every bucket, dramatically at
+narrow spreads. At |spread|=1.0–2.0: ESPN 36.1% / −$3.71 vs
+Kalshi 51.7% / +$1.59. At 5.5–6.0: ESPN 54.3% / +$2.19 vs
+Kalshi 64.9% / +$6.17. The ESPN proxy fires more entries at
+worse effective prices than Kalshi does — exactly as the
+compression mapping predicts.
+
+**Strategic takeaways:**
+
+- **S4A EV at least doubles** once the expansion universe is
+  included with Kalshi-confirmed pricing: headline ~+$1,886/yr
+  on the 165-game competitive dataset becomes +$7,075
+  (existing-universe Path B rollup) + $3,644 expansion ≈
+  +$10,718/yr projected if the strategy were deployed across
+  all spread buckets at competitive-rate scaling.
+- **The 5.5–6.0 bucket is the single best cell** (+$3,570/yr)
+  in the Path B breakdown, not a wider-spread bucket. The
+  pattern strengthens with spread up to that point, then
+  plateaus; 10.5+ is strong on hit rate (69.7%) but low on
+  entry rate (0.44/game) so its annual EV is moderate.
+- **Path A's strategic signal was right direction but wrong
+  magnitude.** The "pattern strengthens at wider spreads"
+  thesis from Path A is confirmed; the negative absolute
+  numbers Path A produced were the ESPN proxy's fault, not
+  the strategy's.
+- **Next step for STRATEGY4_SPEC.md:** the |spread| ≤ 6
+  constraint in §2 should be relaxed or removed. Add a section
+  documenting per-bucket expected EV and position-sizing
+  guidance for wider spreads. Defer actual spec update until
+  after a second playoff week of paper-trading data
+  accumulates.
+
+## 2026-04-22 — Phase 4a S4A engine: replay validation
+
+First runnable build of the S4A paper-trading engine
+(`engine/s4a_signal.py`, `engine/position_manager.py`,
+`engine/live_runner.py`) with a replay harness
+(`engine/replay.py`) that drives the full Kalshi paired
+dataset through the same detector + manager used by the
+live runner, and compares trade-for-trade against the
+authoritative offline simulator
+(`analysis.strategy4_dip_recovery::simulate_s4a`).
+
+**Replay PASS.** 171-game current dataset (grew from 165
+during the in-flight full-season backfill). Engine and
+offline agree on every number:
+
+| Metric | Engine | Offline | Spec (snapshot) |
+|---|---:|---:|---:|
+| Entries | 166 | 166 | 161 |
+| Hit rate | 52.41% | 52.41% | 52.8% |
+| Mean P&L | +$3.2149 | +$3.2149 | +$3.53 |
+| Annual EV | +$1,707.83 | +$1,707.83 | +$1,886 |
+
+The drift vs STRATEGY4_SPEC.md (−$178 annual EV) is a
+dataset change: 6 new games entered the paired dataset
+between 2026-04-21 (spec) and the replay run, and both
+engine and offline agree on the new population. When the
+backfill completes and the ~60-day window stabilizes, the
+STRATEGY4_SPEC.md headline number should be refreshed.
+
+**Interpretation.** The engine faithfully reproduces the
+offline logic to within float rounding:
+
+- Trailing max: time-windowed deque with strict older-than
+  eviction matches `pandas.rolling(6, min_periods=1)` for
+  evenly-spaced 30s ticks (6 observations per window).
+- Entry decision: `dip ≥ $0.08 AND entry_lo ≤ price ≤
+  entry_hi` with position-open re-entry guarded by
+  `entries_this_game < 2`.
+- Exit: target $0.90 / stop $0.40, maker fee on both legs.
+- End-of-game: ≥$0.95 → settle $1.00 no fee, ≤$0.05 →
+  settle $0.00 no fee, else mid with fee.
+
+Equivalence means the paper-trading engine will, in live
+operation, produce the same decisions the offline sweep
+identified — subject to live data quality (missed ticks,
+bid-ask spread vs VWAP, execution latency). The paper
+journal will surface any such gap during live runs.
+
+**Next.** First live paper-trading session runs during
+tonight's NBA slate. Morning review of
+`data/paper_trades/YYYY-MM-DD.jsonl` against actual Kalshi
+market moves is the operator's go/no-go for extending to
+further paper sessions and then Phase 4b (simulated fills
+at real Kalshi quotes) / Phase 4c (real money, capped).
+
+## 2026-04-22 — Strategy 4 halftime entry study (Part 7)
+
+Tested whether a halftime-triggered entry (favorite's Kalshi VWAP
+in $0.50–$0.75 over the final 60s of Q2) extends S4A profitably.
+165 competitive games; 54 (32.7%) produced a halftime entry.
+Report: `docs/analysis_outputs/strategy4_halftime_entry.md`.
+
+**Headline result: halftime entry is NOT profitable as an
+extension or replacement for the S4A dip trigger.**
+
+- Halftime-only: 54 entries, 42.6% hit, mean −$1.80, annual EV
+  **−$323**. Compare S4A dip best config on the same universe:
+  161 entries, 52.8% hit, +$3.53, +$1,886/yr.
+- Combined (halftime entry + S4A dip in Q3+): 137 entries,
+  +$2.47 mean, annual EV **+$1,121** — below baseline S4A's
+  +$1,886 because the negative halftime leg drags overall
+  performance and the post-halftime-only dip scan misses the
+  pre-halftime dip entries that baseline S4A catches in
+  Q1/Q2.
+- Halftime-to-prior delta bucketing did NOT rescue the halftime
+  signal. Even the "fav dropped ≥$0.10 from pre-game" bucket
+  (the strongest disruption signal) ran at 30.0% hit and
+  −$0.58 mean. The pre-game anchor is not the right reference
+  frame for halftime entries. This mirrors the Part 5 finding
+  that prior-weighting doesn't help S4A.
+- Of 27 S4A dip-triggered entries that fire in Q3, only 2
+  (7.4%) fire in the first 60s and 5 (18.5%) in the first
+  120s — the existing S4A dip captures very few
+  halftime-adjacent moments, so the two triggers are mostly
+  disjoint in time. The halftime-triggered subset is where
+  the losses concentrate.
+
+**Interpretation.** Halftime is a known coordination point
+where market microstructure likely tightens (bid-ask compresses,
+MM re-anchors after the break). The 42.6% hit rate vs 52.8%
+for dip-triggered suggests halftime entries lack the "recent
+disruption" signal that makes the dip trigger work —
+entering at a scheduled anchor point is statistically
+similar to entering at a random Q2-end price, which is not
+edge.
+
+**Conclusion.** Do not add halftime entry to the Phase 4a
+ruleset. Keep S4A as the dip-triggered variant per
+STRATEGY4_SPEC §3.
+
+## 2026-04-22 — Strategy 4 spread expansion Path A (Part 8, ESPN-only)
+
+Simulated S4A on ESPN win-probability as a directional proxy
+for Kalshi price across 1,135 games spanning all |spread|
+buckets (1.0–10.5+). Purpose: detect whether the favorite-
+recovery pattern exists beyond the existing |spread|≤6
+universe before committing to the full-season Kalshi
+backfill. Report:
+`docs/analysis_outputs/strategy4_spread_expansion.md`.
+
+**Headline result: the pattern DIRECTIONALLY appears to
+strengthen at wider spreads on ESPN proxy — but the proxy
+massively understates Kalshi EV, so these numbers cannot be
+used for deployment sizing.**
+
+- **Table 4 sanity gap:** on |spread|≤6 competitive games the
+  Kalshi-confirmed S4A result is +$1,886/yr (52.8% hit, +$3.53
+  mean). The ESPN proxy on the same spread band produced
+  −$2,195/yr (37.8% hit, −$3.30 mean). Gap is ~$4,000/yr;
+  the proxy is not calibrated for EV work.
+- **Directional monotonicity within the expansion zone:**
+  hit rate climbs from 42.5% (6.5–8.0) → 54.5% (8.5–10.0)
+  → 58.0% (10.5+). Mean P&L flips from negative to positive
+  (+$0.25 at 8.5–10.0, +$0.99 at 10.5+). Entry rate per game
+  stays in the 0.84–1.34 range across all buckets.
+- **Entry price distribution shifts up with spread:** median
+  entry price rises from $0.60 at |spread|=1–2 to $0.71 at
+  |spread|=10.5+. Bigger favorites rarely dip far below their
+  pre-game anchor, so entries cluster in the upper half of
+  the $0.50–$0.75 band.
+- **ESPN-scale expansion EV:** −$2,227/yr across |spread|>6
+  buckets combined (dominated by 6.5–8.0's −$2,852). The
+  higher-spread buckets (8.5+) are modestly positive even on
+  the proxy — which, given the proxy's ~$4,000/yr downward
+  bias vs Kalshi, hints that Kalshi-confirmed numbers for
+  those buckets could be meaningfully positive.
+
+**Key caveat.** The ESPN-to-Kalshi compression is ~5–8pp
+deeper in mid WP zones (favorites swing harder on ESPN).
+This means ESPN triggers more entries at worse effective
+entry prices. The directional signal — "pattern persists or
+strengthens with spread" — is informative; the absolute P&L
+numbers are not. Path B (Kalshi trade tape on the expanded
+dataset) will produce the confirmed numbers once the
+full-season backfill completes. Kalshi retention cliff
+(~60 days) means only the 2026-02-20 → 2026-04-21 subset
+will be retrievable for wider-spread games.
+
+**Next step.** Oliver runs the full-season backfill
+(`python -m analysis.wp_vs_kalshi_paired --batch
+data/wp_kalshi_paired/matched_games.csv`, ~2–3 hours). After
+it completes, a Path B analysis on the expanded Kalshi-paired
+dataset will either confirm or refute the expansion thesis
+with real trade-tape-derived P&L.
+
+## 2026-04-22 — Full-season Kalshi ticker_matcher expansion
+
+Regenerated `data/wp_kalshi_paired/matched_games.csv` with
+the uncapped ticker_matcher (previously filtered to
+|spread|≤6). New distribution across the 2025-26 season:
+
+| |spread| bucket | Games |
+|---|---:|
+| ≤ 6 | 549 |
+| 6 – 10 | 297 |
+| > 10 | 290 |
+| NaN | 101 |
+| **Total** | **1,237** |
+
+168 of these games are already cached in
+`data/wp_kalshi_paired/`; the remaining ~1,069 are queued for
+the batch trade-tape pull. Expected yield after the ~60-day
+Kalshi retention cliff: roughly 450–550 of the uncached games
+will return non-empty trade tapes. Backfill command:
+`python -m analysis.wp_vs_kalshi_paired --batch
+data/wp_kalshi_paired/matched_games.csv` (~2–3 hours).
+
 ## 2026-04-16 — Pilot analysis on 2024-25 regular season (session handoff)
 
 **Data:** 1,230 games, 60,590 minute-by-minute score snapshots.

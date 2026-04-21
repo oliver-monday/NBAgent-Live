@@ -5,13 +5,21 @@ Part 1: false-summit analysis (per price level, how often does a team
 Part 2: favorite dip-recovery sweep (1,200 configs).
 Part 3: underdog run-capture sweep (~200 configs).
 Part 4: cross-strategy comparison.
+Part 5: prior-weighting analysis.
+Part 6: position management study.
+Part 7: halftime entry study (Kalshi paired dataset).
+Part 8: spread expansion, ESPN-only Path A (all ~1,200 ESPN games).
 
 Run:
-    python -m analysis.strategy4_dip_recovery
+    python -m analysis.strategy4_dip_recovery          # Parts 1-6 (default)
+    python -m analysis.strategy4_dip_recovery --part7  # halftime-only
+    python -m analysis.strategy4_dip_recovery --part8  # ESPN spread expansion
 """
 
 from __future__ import annotations
 
+import argparse
+import json
 import math
 import re
 from dataclasses import dataclass
@@ -26,6 +34,30 @@ PAIRED_DIR = REPO_ROOT / "data" / "wp_kalshi_paired"
 REPORT_PATH = (
     REPO_ROOT / "docs" / "analysis_outputs" / "strategy4_dip_recovery.md"
 )
+REPORT_PART7_PATH = (
+    REPO_ROOT / "docs" / "analysis_outputs" / "strategy4_halftime_entry.md"
+)
+REPORT_PART8_PATH = (
+    REPO_ROOT / "docs" / "analysis_outputs" / "strategy4_spread_expansion.md"
+)
+REPORT_PART8B_PATH = (
+    REPO_ROOT / "docs" / "analysis_outputs"
+    / "strategy4_spread_expansion_kalshi.md"
+)
+
+# Best S4A config per STRATEGY4_SPEC.md §3. Used by Parts 7 and 8 so
+# halftime simulation and ESPN-proxy simulation share a common exit
+# framework with the main strategy.
+BEST_S4A_LOOKBACK_SEC = 180
+BEST_S4A_DIP_DEPTH = 0.08
+BEST_S4A_ENTRY_LO = 0.50
+BEST_S4A_ENTRY_HI = 0.75
+BEST_S4A_EXIT_TARGET = 0.90
+BEST_S4A_STOP_LOSS = 0.40
+
+Q_LEN_SEC = 720
+OT_LEN_SEC = 300
+HALFTIME_SEC = 2 * Q_LEN_SEC   # 1440 = start of Q3
 
 TICKER_RE = re.compile(r"(KXNBAGAME-\d{2}[A-Z]{3}\d{2}[A-Z]{6})")
 MAX_SPREAD_COMPETITIVE = 6.0
@@ -2017,9 +2049,1311 @@ def render_comparison(
     md.append("")
 
 
+# ---- Part 7: Halftime entry study --------------------------------------
+
+@dataclass
+class HalftimeTrade:
+    ticker: str
+    entry_idx: int
+    entry_price: float
+    exit_idx: int
+    exit_price: float
+    exit_type: str
+    hold_bins: int
+    net_pnl: float
+    abs_spread: float
+    pregame_price: float | None
+    ht_to_prior_delta: float | None   # pregame - halftime (positive = fav dropped)
+
+
+def _last_q2_vwap(df: pd.DataFrame) -> tuple[float | None, int | None]:
+    """Return (halftime VWAP, idx of last Q2 bin in df).
+
+    Halftime VWAP = mean fav_kalshi_vwap over the last 60s (2 bins) of
+    Q2. Returns (None, None) if Q2 has no bins or no VWAP.
+    """
+    q2 = df[df["period"] == 2]
+    if q2.empty:
+        return None, None
+    tail = q2.tail(2)
+    tail = tail.dropna(subset=["fav_kalshi_vwap"])
+    if tail.empty:
+        return None, None
+    return float(tail["fav_kalshi_vwap"].mean()), int(tail.index[-1])
+
+
+def _simulate_halftime_one(
+    g: dict,
+    pregame: float | None,
+    entry_lo: float = BEST_S4A_ENTRY_LO,
+    entry_hi: float = BEST_S4A_ENTRY_HI,
+    target: float = BEST_S4A_EXIT_TARGET,
+    stop: float = BEST_S4A_STOP_LOSS,
+) -> HalftimeTrade | None:
+    df = g["ts"]
+    ht_vwap, ht_idx = _last_q2_vwap(df)
+    if ht_vwap is None or ht_idx is None:
+        return None
+    if not (entry_lo <= ht_vwap <= entry_hi):
+        return None
+    delta = (pregame - ht_vwap) if pregame is not None else None
+    prices = df["fav_kalshi_vwap"].values
+    n = len(prices)
+    entry_fee = maker_fee(CONTRACT_SIZE, ht_vwap)
+    for i in range(ht_idx + 1, n):
+        p = float(prices[i])
+        if pd.isna(p):
+            continue
+        if p >= target:
+            fee = entry_fee + maker_fee(CONTRACT_SIZE, p)
+            return HalftimeTrade(
+                ticker=g["ticker"], entry_idx=ht_idx, entry_price=ht_vwap,
+                exit_idx=i, exit_price=p, exit_type="target",
+                hold_bins=i - ht_idx,
+                net_pnl=(p - ht_vwap) * CONTRACT_SIZE - fee,
+                abs_spread=g["abs_spread"],
+                pregame_price=pregame, ht_to_prior_delta=delta,
+            )
+        if p <= stop:
+            fee = entry_fee + maker_fee(CONTRACT_SIZE, p)
+            return HalftimeTrade(
+                ticker=g["ticker"], entry_idx=ht_idx, entry_price=ht_vwap,
+                exit_idx=i, exit_price=p, exit_type="stop",
+                hold_bins=i - ht_idx,
+                net_pnl=(p - ht_vwap) * CONTRACT_SIZE - fee,
+                abs_spread=g["abs_spread"],
+                pregame_price=pregame, ht_to_prior_delta=delta,
+            )
+    # Resolution at game end
+    last_price = float(prices[-1])
+    if last_price >= RESOLUTION_WIN_CUTOFF:
+        resolution, exit_type, exit_fee = 1.0, "resolution_win", 0.0
+    elif last_price <= RESOLUTION_LOSS_CUTOFF:
+        resolution, exit_type, exit_fee = 0.0, "resolution_loss", 0.0
+    else:
+        resolution, exit_type = float(last_price), "resolution_mid"
+        exit_fee = maker_fee(CONTRACT_SIZE, resolution)
+    return HalftimeTrade(
+        ticker=g["ticker"], entry_idx=ht_idx, entry_price=ht_vwap,
+        exit_idx=n - 1, exit_price=last_price, exit_type=exit_type,
+        hold_bins=(n - 1 - ht_idx),
+        net_pnl=(resolution - ht_vwap) * CONTRACT_SIZE - entry_fee - exit_fee,
+        abs_spread=g["abs_spread"],
+        pregame_price=pregame, ht_to_prior_delta=delta,
+    )
+
+
+def _summarize_halftime(
+    trades: list[HalftimeTrade], n_games: int,
+) -> dict:
+    if not trades:
+        return {
+            "entries": 0, "hit_pct": 0.0, "stop_pct": 0.0,
+            "held_pct": 0.0, "mean_pnl": 0.0, "median_pnl": 0.0,
+            "annual_ev": 0.0, "max_win": 0.0, "max_loss": 0.0,
+        }
+    pnls = np.array([t.net_pnl for t in trades])
+    n = len(trades)
+    n_target = sum(1 for t in trades if t.exit_type == "target")
+    n_stop = sum(1 for t in trades if t.exit_type == "stop")
+    n_held = n - n_target - n_stop
+    mean_pnl = float(pnls.mean())
+    entries_per_game = n / n_games if n_games else 0
+    annual_ev = (
+        mean_pnl * entries_per_game * REG_SEASON_GAMES * COMP_FRACTION
+    )
+    return {
+        "entries": n,
+        "hit_pct": 100 * n_target / n,
+        "stop_pct": 100 * n_stop / n,
+        "held_pct": 100 * n_held / n,
+        "mean_pnl": mean_pnl,
+        "median_pnl": float(np.median(pnls)),
+        "annual_ev": annual_ev,
+        "max_win": float(pnls.max()),
+        "max_loss": float(pnls.min()),
+    }
+
+
+def _q3_entry_timing(
+    s4a_trades: list[S4ATrade], games: list[dict],
+) -> dict:
+    """Classify S4A Q3 dip-triggered entries by time-within-Q3."""
+    ts_by_ticker = {g["ticker"]: g["ts"] for g in games}
+    total_q3 = 0
+    first_120s = 0
+    first_60s = 0
+    for t in s4a_trades:
+        if t.entry_period != 3:
+            continue
+        total_q3 += 1
+        ts = ts_by_ticker.get(t.ticker)
+        if ts is None:
+            continue
+        try:
+            gse = ts["game_seconds_elapsed"].iloc[t.entry_idx]
+        except (IndexError, KeyError):
+            continue
+        if pd.isna(gse):
+            continue
+        since_q3_start = float(gse) - HALFTIME_SEC
+        if 0 <= since_q3_start < 60:
+            first_60s += 1
+        if 0 <= since_q3_start < 120:
+            first_120s += 1
+    return {
+        "total_q3": total_q3,
+        "first_60s": first_60s,
+        "first_120s": first_120s,
+    }
+
+
+def _combined_halftime_plus_dip(
+    games: list[dict], best_cfg: S4AConfig,
+    precomp_max: dict, pregame: dict[str, float],
+) -> tuple[list, list]:
+    """Combined strategy: halftime entry (if in zone) + S4A dip during Q3+.
+
+    Returns (halftime_trades, q3plus_s4a_trades). Same game can produce
+    up to 2 trades. The Q3+ simulation ignores bins before the halftime
+    exit (or before halftime if no halftime entry fired) to avoid
+    overlap.
+    """
+    ht_trades: list[HalftimeTrade] = []
+    q3_trades: list[S4ATrade] = []
+    lookback_bins = max(1, int(best_cfg.lookback_sec / BUCKET_SEC))
+    for g in games:
+        df = g["ts"]
+        prices = df["fav_kalshi_vwap"].values
+        periods = df["period"].values
+        n = len(prices)
+        if n < 2:
+            continue
+        ht = _simulate_halftime_one(g, pregame.get(g["ticker"]))
+        # Determine start index for Q3+ dip scan
+        if ht is not None:
+            ht_trades.append(ht)
+            start_idx = ht.exit_idx + 1
+        else:
+            ht_vwap, ht_idx = _last_q2_vwap(df)
+            start_idx = (ht_idx + 1) if ht_idx is not None else 0
+
+        tmax = precomp_max.get((g["ticker"], lookback_bins))
+        if tmax is None:
+            continue
+
+        in_pos = False
+        entry_idx = entry_price = entry_period = None
+        i = start_idx
+        while i < n:
+            p = float(prices[i])
+            if pd.isna(p):
+                i += 1
+                continue
+            if not in_pos:
+                if best_cfg.entry_lo <= p <= best_cfg.entry_hi:
+                    if (float(tmax[i]) - p) >= best_cfg.dip_depth:
+                        in_pos = True
+                        entry_idx = i
+                        entry_price = p
+                        entry_period = (
+                            int(periods[i])
+                            if not pd.isna(periods[i]) else None
+                        )
+                        i += 1
+                        continue
+                i += 1
+                continue
+            # In position — same exit logic as simulate_s4a
+            if p >= best_cfg.exit_target:
+                fee = maker_fee(CONTRACT_SIZE, entry_price) + maker_fee(
+                    CONTRACT_SIZE, p,
+                )
+                q3_trades.append(S4ATrade(
+                    ticker=g["ticker"], entry_idx=entry_idx,
+                    entry_price=entry_price, entry_period=entry_period,
+                    exit_idx=i, exit_price=p, exit_type="target",
+                    hold_bins=i - entry_idx,
+                    net_pnl=(p - entry_price) * CONTRACT_SIZE - fee,
+                    is_reentry=False, abs_spread=g["abs_spread"],
+                ))
+                in_pos = False
+                i += 1
+                continue
+            if p <= best_cfg.stop_loss:
+                fee = maker_fee(CONTRACT_SIZE, entry_price) + maker_fee(
+                    CONTRACT_SIZE, p,
+                )
+                q3_trades.append(S4ATrade(
+                    ticker=g["ticker"], entry_idx=entry_idx,
+                    entry_price=entry_price, entry_period=entry_period,
+                    exit_idx=i, exit_price=p, exit_type="stop",
+                    hold_bins=i - entry_idx,
+                    net_pnl=(p - entry_price) * CONTRACT_SIZE - fee,
+                    is_reentry=False, abs_spread=g["abs_spread"],
+                ))
+                in_pos = False
+                i += 1
+                continue
+            i += 1
+
+        if in_pos:
+            last_price = float(prices[-1])
+            entry_fee = maker_fee(CONTRACT_SIZE, entry_price)
+            if last_price >= RESOLUTION_WIN_CUTOFF:
+                resolution, exit_type, exit_fee = 1.0, "resolution_win", 0.0
+            elif last_price <= RESOLUTION_LOSS_CUTOFF:
+                resolution, exit_type, exit_fee = 0.0, "resolution_loss", 0.0
+            else:
+                resolution, exit_type = float(last_price), "resolution_mid"
+                exit_fee = maker_fee(CONTRACT_SIZE, resolution)
+            q3_trades.append(S4ATrade(
+                ticker=g["ticker"], entry_idx=entry_idx,
+                entry_price=entry_price, entry_period=entry_period,
+                exit_idx=n - 1, exit_price=last_price, exit_type=exit_type,
+                hold_bins=(n - 1 - entry_idx),
+                net_pnl=(resolution - entry_price) * CONTRACT_SIZE
+                        - entry_fee - exit_fee,
+                is_reentry=False, abs_spread=g["abs_spread"],
+            ))
+    return ht_trades, q3_trades
+
+
+_HT_DELTA_BINS: list[tuple[str, float, float]] = [
+    ("fav above prior (Δ<0)", -float("inf"), 0.0),
+    ("0–$0.05 below prior", 0.0, 0.05),
+    ("$0.05–$0.10 below prior", 0.05, 0.10),
+    (">$0.10 below prior", 0.10, float("inf")),
+]
+
+
+def _ht_delta_label(delta: float) -> str:
+    for lab, lo, hi in _HT_DELTA_BINS:
+        if lo <= delta < hi:
+            return lab
+    return _HT_DELTA_BINS[-1][0]
+
+
+def run_part7() -> int:
+    log("Part 7 — halftime entry study")
+    log("Loading competitive games...")
+    games = load_competitive_games()
+    n_games = len(games)
+    log(f"Competitive games loaded: {n_games}")
+
+    log("Loading pre-game Kalshi prices...")
+    pregame = load_pregame_prices()
+    log(f"  pre-game prices available for {len(pregame)} games")
+
+    # Precompute trailing max at best lookback for combined sim
+    lookback_bins = max(1, int(BEST_S4A_LOOKBACK_SEC / BUCKET_SEC))
+    precomp_max: dict[tuple[str, int], np.ndarray] = {}
+    for g in games:
+        fav = g["ts"]["fav_kalshi_vwap"].values
+        precomp_max[(g["ticker"], lookback_bins)] = (
+            _precompute_trailing_max(fav, lookback_bins)
+        )
+
+    # Scan halftime universe
+    log("Scanning halftime universe...")
+    in_zone = 0
+    halftimes: list[tuple[dict, float | None, float | None, int | None]] = []
+    for g in games:
+        ht_vwap, ht_idx = _last_q2_vwap(g["ts"])
+        pg = pregame.get(g["ticker"])
+        halftimes.append((g, pg, ht_vwap, ht_idx))
+        if ht_vwap is not None and BEST_S4A_ENTRY_LO <= ht_vwap <= BEST_S4A_ENTRY_HI:
+            in_zone += 1
+
+    # Run halftime-only sim
+    log("Simulating halftime-only entries...")
+    ht_trades: list[HalftimeTrade] = []
+    for g, pg, _, _ in halftimes:
+        t = _simulate_halftime_one(g, pg)
+        if t is not None:
+            ht_trades.append(t)
+    ht_summary = _summarize_halftime(ht_trades, n_games)
+
+    # For Table 2 comparison, run best-config S4A
+    log("Simulating best-config S4A dip (comparison)...")
+    best_cfg = S4AConfig(
+        lookback_sec=BEST_S4A_LOOKBACK_SEC,
+        dip_depth=BEST_S4A_DIP_DEPTH,
+        entry_lo=BEST_S4A_ENTRY_LO,
+        entry_hi=BEST_S4A_ENTRY_HI,
+        exit_target=BEST_S4A_EXIT_TARGET,
+        stop_loss=BEST_S4A_STOP_LOSS,
+    )
+    s4a_trades = simulate_s4a(games, best_cfg, precomp_max)
+    s4a_summary = summarize_s4a(s4a_trades, n_games)
+
+    # Table 4 — Q3 entry timing
+    q3_timing = _q3_entry_timing(s4a_trades, games)
+
+    # Table 5 — combined
+    log("Simulating combined halftime + S4A-dip...")
+    c_ht, c_dip = _combined_halftime_plus_dip(
+        games, best_cfg, precomp_max, pregame,
+    )
+    combined_pnls = (
+        [t.net_pnl for t in c_ht] + [t.net_pnl for t in c_dip]
+    )
+    combined_entries = len(combined_pnls)
+    combined_mean = (
+        float(np.mean(combined_pnls)) if combined_pnls else 0.0
+    )
+    combined_annual = (
+        combined_mean * (combined_entries / n_games)
+        * REG_SEASON_GAMES * COMP_FRACTION
+        if n_games else 0.0
+    )
+    c_ht_summary = _summarize_halftime(c_ht, n_games)
+    c_dip_summary = summarize_s4a(c_dip, n_games)
+
+    # ---- Render report --------------------------------------------------
+    md: list[str] = []
+    md.append("# Strategy 4 — Part 7: Halftime Entry Study\n")
+    md.append(f"_Generated: {datetime.now(timezone.utc).isoformat()}_\n")
+    md.append(
+        f"Dataset: {n_games} competitive games (|spread| ≤ 6) from "
+        "the 168-game paired dataset. Halftime VWAP defined as the "
+        "mean `fav_kalshi_vwap` over the final 60s (last 2 bins) of "
+        "Q2. Exit framework matches S4A best config: target "
+        f"${BEST_S4A_EXIT_TARGET:.2f}, stop ${BEST_S4A_STOP_LOSS:.2f}, "
+        f"entry zone ${BEST_S4A_ENTRY_LO:.2f}–${BEST_S4A_ENTRY_HI:.2f}.\n"
+    )
+
+    # Table 1 — universe
+    md.append("## Table 1 — Halftime entry universe\n")
+    ht_observed = sum(1 for _, _, v, _ in halftimes if v is not None)
+    md.append(
+        f"| Metric | Value |\n"
+        f"|---|---:|\n"
+        f"| Games with Q2 halftime VWAP observed | {ht_observed} |\n"
+        f"| Halftime VWAP in ${BEST_S4A_ENTRY_LO:.2f}–${BEST_S4A_ENTRY_HI:.2f} "
+        f"| {in_zone} ({100*in_zone/n_games:.1f}%) |\n"
+        f"| Games where halftime entry fires | {ht_summary['entries']} |\n"
+    )
+
+    # Halftime VWAP distribution (qualitative)
+    ht_vals = [v for _, _, v, _ in halftimes if v is not None]
+    if ht_vals:
+        arr = np.array(ht_vals)
+        md.append(
+            f"Halftime VWAP distribution: "
+            f"min ${arr.min():.2f}, p25 ${np.quantile(arr, 0.25):.2f}, "
+            f"median ${np.median(arr):.2f}, "
+            f"p75 ${np.quantile(arr, 0.75):.2f}, max ${arr.max():.2f}.\n"
+        )
+
+    # Table 2 — halftime vs S4A dip
+    md.append("\n## Table 2 — Halftime entry P&L vs S4A dip-triggered\n")
+    md.append(
+        "| Strategy | Entries | Hit % | Stop % | Held % | "
+        "Mean P&L | Median P&L | Max win | Max loss | Annual EV |\n"
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n"
+    )
+    md.append(
+        f"| Halftime entry | {ht_summary['entries']} | "
+        f"{ht_summary['hit_pct']:.1f}% | {ht_summary['stop_pct']:.1f}% | "
+        f"{ht_summary['held_pct']:.1f}% | "
+        f"${ht_summary['mean_pnl']:+.2f} | "
+        f"${ht_summary['median_pnl']:+.2f} | "
+        f"${ht_summary['max_win']:+.2f} | "
+        f"${ht_summary['max_loss']:+.2f} | "
+        f"${ht_summary['annual_ev']:+,.0f} |\n"
+    )
+    md.append(
+        f"| S4A dip (best cfg) | {s4a_summary['entries']} | "
+        f"{s4a_summary['hit_pct']:.1f}% | {s4a_summary['stop_pct']:.1f}% | "
+        f"{s4a_summary['held_pct']:.1f}% | "
+        f"${s4a_summary['mean_pnl']:+.2f} | "
+        f"${s4a_summary['median_pnl']:+.2f} | "
+        f"${s4a_summary['max_win']:+.2f} | "
+        f"${s4a_summary['max_loss']:+.2f} | "
+        f"${s4a_summary['annual_ev']:+,.0f} |\n"
+    )
+
+    # Table 3 — by halftime-to-prior delta
+    md.append("\n## Table 3 — Halftime entries by halftime-to-prior delta\n")
+    md.append(
+        "Delta = pre-game Kalshi price − halftime VWAP. "
+        "Positive delta means favorite has dropped from its "
+        "pre-game anchor (disruption signal).\n\n"
+        "| Δ bucket | Entries | Hit % | Mean P&L | Annual EV share |\n"
+        "|---|---:|---:|---:|---:|\n"
+    )
+    # Bucket halftime trades by delta
+    by_bucket: dict[str, list[HalftimeTrade]] = {}
+    no_pregame = 0
+    for t in ht_trades:
+        if t.ht_to_prior_delta is None:
+            no_pregame += 1
+            continue
+        lab = _ht_delta_label(t.ht_to_prior_delta)
+        by_bucket.setdefault(lab, []).append(t)
+    for lab, _, _ in _HT_DELTA_BINS:
+        trades_in = by_bucket.get(lab, [])
+        n = len(trades_in)
+        if n == 0:
+            md.append(f"| {lab} | 0 | — | — | — |\n")
+            continue
+        pnls = np.array([t.net_pnl for t in trades_in])
+        hits = sum(1 for t in trades_in if t.exit_type == "target")
+        mean = float(pnls.mean())
+        bucket_annual = (
+            mean * (n / n_games) * REG_SEASON_GAMES * COMP_FRACTION
+        )
+        md.append(
+            f"| {lab} | {n} | {100*hits/n:.1f}% | "
+            f"${mean:+.2f} | ${bucket_annual:+,.0f} |\n"
+        )
+    if no_pregame:
+        md.append(
+            f"\n_Note: {no_pregame} halftime entries excluded from "
+            "delta bucketing because no pre-game Kalshi price is "
+            "available for those games._\n"
+        )
+
+    # Table 4 — Q3 entry timing of S4A dip
+    md.append("\n## Table 4 — S4A dip entries: timing within Q3\n")
+    md.append(
+        f"Of S4A dip entries that fire in Q3 (total: "
+        f"{q3_timing['total_q3']}), how many fire within the first "
+        "seconds of Q3? This measures whether the dip-trigger is "
+        "already capturing halftime-adjacent moments.\n\n"
+        "| Window | Entries | % of Q3 entries |\n"
+        "|---|---:|---:|\n"
+    )
+    tot = max(1, q3_timing["total_q3"])
+    md.append(
+        f"| First 60s of Q3 | {q3_timing['first_60s']} | "
+        f"{100*q3_timing['first_60s']/tot:.1f}% |\n"
+        f"| First 120s of Q3 | {q3_timing['first_120s']} | "
+        f"{100*q3_timing['first_120s']/tot:.1f}% |\n"
+        f"| All Q3 entries | {q3_timing['total_q3']} | 100% |\n"
+    )
+
+    # Table 5 — combined
+    md.append("\n## Table 5 — Halftime entry + S4A dip (combined, Q3+ dip only)\n")
+    md.append(
+        "Halftime entry and S4A-dip run on the same game. After a "
+        "halftime exit (or if halftime did not fire), the dip trigger "
+        "scans Q3 onward. Each game can produce up to 2 trades.\n\n"
+        "| Leg | Entries | Hit % | Mean P&L | Annual EV |\n"
+        "|---|---:|---:|---:|---:|\n"
+        f"| Halftime leg | {c_ht_summary['entries']} | "
+        f"{c_ht_summary['hit_pct']:.1f}% | "
+        f"${c_ht_summary['mean_pnl']:+.2f} | "
+        f"${c_ht_summary['annual_ev']:+,.0f} |\n"
+        f"| Q3+ dip leg | {c_dip_summary['entries']} | "
+        f"{c_dip_summary['hit_pct']:.1f}% | "
+        f"${c_dip_summary['mean_pnl']:+.2f} | "
+        f"${c_dip_summary['annual_ev']:+,.0f} |\n"
+        f"| **Combined** | **{combined_entries}** | — | "
+        f"**${combined_mean:+.2f}** | **${combined_annual:+,.0f}** |\n"
+    )
+    md.append(
+        "\nFor reference, baseline S4A dip (all-game) annual EV = "
+        f"${s4a_summary['annual_ev']:+,.0f}. The combined strategy "
+        "captures both the halftime entry and any post-halftime dip, "
+        "at the cost of potentially forgoing a pre-halftime dip that "
+        "the baseline would have caught.\n"
+    )
+
+    REPORT_PART7_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_PART7_PATH.write_text("".join(md) + "\n")
+    log(f"Part 7 report → {REPORT_PART7_PATH}")
+    return 0
+
+
+# ---- Part 8: ESPN-only spread expansion (Path A) ------------------------
+
+_CLOCK_RE = re.compile(r"^(\d{1,2}):(\d{2}(?:\.\d+)?)$")
+
+
+def _parse_clock_str(clock_str: str | None) -> float | None:
+    """Parse 'M:SS' or 'M:SS.s' → seconds remaining in period."""
+    if not clock_str:
+        return None
+    m = _CLOCK_RE.match(clock_str.strip())
+    if not m:
+        return None
+    try:
+        return int(m.group(1)) * 60 + float(m.group(2))
+    except ValueError:
+        return None
+
+
+def _elapsed_from_period_clock(
+    period: int | None, clock_sec: float | None,
+) -> float | None:
+    if period is None or clock_sec is None:
+        return None
+    p = int(period)
+    if p <= 0:
+        return None
+    if p <= 4:
+        return (p - 1) * Q_LEN_SEC + (Q_LEN_SEC - clock_sec)
+    return 4 * Q_LEN_SEC + (p - 5) * OT_LEN_SEC + (OT_LEN_SEC - clock_sec)
+
+
+def load_espn_wp_series(
+    game_id: str, home_spread: float,
+) -> pd.DataFrame | None:
+    """Build a 30s-bucketed favorite-side ESPN WP timeseries.
+
+    Columns returned: game_seconds_elapsed, period, fav_kalshi_vwap.
+    Uses `fav_kalshi_vwap` as the column name (holding ESPN WP values)
+    so that simulate_s4a can consume the result without modification.
+    """
+    pbp_path = REPO_ROOT / "data" / "pbp" / f"{game_id}.jsonl"
+    wp_path = REPO_ROOT / "data" / "espn_wp" / f"{game_id}.jsonl"
+    if not pbp_path.exists() or not wp_path.exists():
+        return None
+
+    plays: dict[str, tuple[int, float]] = {}
+    with pbp_path.open() as fh:
+        for line in fh:
+            try:
+                obj = json.loads(line)
+            except ValueError:
+                continue
+            pid = obj.get("id")
+            period = (obj.get("period") or {}).get("number")
+            clock_str = (obj.get("clock") or {}).get("displayValue")
+            clock_sec = _parse_clock_str(clock_str)
+            elapsed = _elapsed_from_period_clock(period, clock_sec)
+            if pid and period is not None and elapsed is not None:
+                plays[str(pid)] = (int(period), float(elapsed))
+
+    rows: list[dict] = []
+    with wp_path.open() as fh:
+        for line in fh:
+            try:
+                obj = json.loads(line)
+            except ValueError:
+                continue
+            pid = obj.get("playId")
+            home_wp = obj.get("homeWinPercentage")
+            if pid is None or home_wp is None:
+                continue
+            pk = str(pid)
+            if pk not in plays:
+                continue
+            period, elapsed = plays[pk]
+            rows.append({
+                "period": period, "elapsed": elapsed,
+                "home_wp": float(home_wp),
+            })
+    if not rows:
+        return None
+
+    df = pd.DataFrame(rows).sort_values("elapsed").reset_index(drop=True)
+    if home_spread < 0:
+        df["fav_wp"] = df["home_wp"]
+    else:
+        df["fav_wp"] = 1.0 - df["home_wp"]
+    df["bucket"] = (df["elapsed"] // BUCKET_SEC * BUCKET_SEC).astype(int)
+    agg = df.groupby("bucket", as_index=False).agg(
+        period=("period", "last"),
+        fav_kalshi_vwap=("fav_wp", "last"),
+    )
+    agg = agg.rename(columns={"bucket": "game_seconds_elapsed"})
+    # Reindex to continuous 30s grid; forward-fill
+    lo = int(agg["game_seconds_elapsed"].min())
+    hi = int(agg["game_seconds_elapsed"].max()) + BUCKET_SEC
+    grid = np.arange(lo, hi, BUCKET_SEC, dtype=int)
+    agg = (
+        agg.set_index("game_seconds_elapsed")
+        .reindex(grid).ffill().reset_index()
+        .rename(columns={"index": "game_seconds_elapsed"})
+    )
+    agg["fav_kalshi_vwap"] = pd.to_numeric(
+        agg["fav_kalshi_vwap"], errors="coerce",
+    )
+    agg["period"] = pd.to_numeric(agg["period"], errors="coerce")
+    agg = agg.dropna(subset=["fav_kalshi_vwap"]).reset_index(drop=True)
+    return agg
+
+
+def load_all_espn_games(min_bins: int = 20) -> list[dict]:
+    """Load every game from nba_master with parseable spread and ESPN
+    WP + PBP files present."""
+    master = pd.read_csv(REPO_ROOT / "data" / "nba_master_2025_26.csv")
+    master["home_spread"] = pd.to_numeric(
+        master["home_spread"], errors="coerce",
+    )
+    master = master.dropna(subset=["home_spread", "game_id"])
+    games: list[dict] = []
+    skipped_missing = 0
+    skipped_short = 0
+    for r in master.itertuples():
+        try:
+            gid = str(int(r.game_id))
+        except (ValueError, TypeError):
+            continue
+        spread = float(r.home_spread)
+        ts = load_espn_wp_series(gid, spread)
+        if ts is None or ts.empty:
+            skipped_missing += 1
+            continue
+        if len(ts) < min_bins:
+            skipped_short += 1
+            continue
+        games.append({
+            "ticker": f"ESPN-{gid}",
+            "abs_spread": abs(spread),
+            "ts": ts,
+        })
+    log(
+        f"  loaded {len(games)} ESPN games; "
+        f"skipped {skipped_missing} (missing files) + "
+        f"{skipped_short} (too short)"
+    )
+    return games
+
+
+_SPREAD_BUCKETS: list[tuple[str, float, float]] = [
+    ("1.0–2.0", 1.0, 2.0),
+    ("2.5–3.5", 2.5, 3.5),
+    ("4.0–5.0", 4.0, 5.0),
+    ("5.5–6.0", 5.5, 6.0),
+    ("6.5–8.0", 6.5, 8.0),
+    ("8.5–10.0", 8.5, 10.0),
+    ("10.5+", 10.5, float("inf")),
+]
+
+
+def _bucket_for_spread(abs_spread: float) -> str | None:
+    for lab, lo, hi in _SPREAD_BUCKETS:
+        if lo <= abs_spread <= hi:
+            return lab
+    return None
+
+
+def run_part8() -> int:
+    log("Part 8 — spread expansion (ESPN-only, Path A)")
+    log("Loading ESPN games from nba_master + pbp + espn_wp...")
+    games = load_all_espn_games()
+    n_games = len(games)
+    log(f"ESPN games loaded: {n_games}")
+
+    # Build per-bucket game lists
+    bucket_games: dict[str, list[dict]] = {}
+    for g in games:
+        lab = _bucket_for_spread(g["abs_spread"])
+        if lab is None:
+            continue
+        bucket_games.setdefault(lab, []).append(g)
+
+    # Precompute trailing max per bucket (restricted to best-config lookback)
+    lookback_bins = max(1, int(BEST_S4A_LOOKBACK_SEC / BUCKET_SEC))
+    log(f"Precomputing trailing max (lookback={lookback_bins} bins)...")
+    precomp_max: dict[tuple[str, int], np.ndarray] = {}
+    for g in games:
+        fav = g["ts"]["fav_kalshi_vwap"].values
+        precomp_max[(g["ticker"], lookback_bins)] = (
+            _precompute_trailing_max(fav, lookback_bins)
+        )
+
+    best_cfg = S4AConfig(
+        lookback_sec=BEST_S4A_LOOKBACK_SEC,
+        dip_depth=BEST_S4A_DIP_DEPTH,
+        entry_lo=BEST_S4A_ENTRY_LO,
+        entry_hi=BEST_S4A_ENTRY_HI,
+        exit_target=BEST_S4A_EXIT_TARGET,
+        stop_loss=BEST_S4A_STOP_LOSS,
+    )
+
+    # Run simulation per bucket
+    log("Simulating S4A per bucket on ESPN proxy...")
+    bucket_stats: dict[str, dict] = {}
+    bucket_trades_all: dict[str, list[S4ATrade]] = {}
+    for lab, _, _ in _SPREAD_BUCKETS:
+        gs = bucket_games.get(lab, [])
+        if not gs:
+            bucket_stats[lab] = {
+                "n_games": 0, "entries": 0, "games_with_entry": 0,
+                "entries_per_game": 0.0, "hit_pct": 0.0,
+                "mean_pnl": 0.0, "annual_ev": 0.0, "entry_prices": [],
+            }
+            bucket_trades_all[lab] = []
+            continue
+        trades = simulate_s4a(gs, best_cfg, precomp_max)
+        summary = summarize_s4a(trades, len(gs))
+        games_with_entry = len({t.ticker for t in trades})
+        bucket_stats[lab] = {
+            "n_games": len(gs),
+            "entries": summary["entries"],
+            "games_with_entry": games_with_entry,
+            "entries_per_game": (
+                summary["entries"] / len(gs) if gs else 0.0
+            ),
+            "hit_pct": summary["hit_pct"],
+            "mean_pnl": summary["mean_pnl"],
+            "annual_ev": summary["annual_ev"],
+            "entry_prices": [t.entry_price for t in trades],
+        }
+        bucket_trades_all[lab] = trades
+
+    # ---- Table 4 sanity check: ESPN vs Kalshi on competitive |spread|≤6
+    log("Loading Kalshi paired competitive games for sanity check...")
+    kalshi_games = load_competitive_games()
+    kalshi_lookback_bins = max(1, int(BEST_S4A_LOOKBACK_SEC / BUCKET_SEC))
+    kalshi_precomp: dict[tuple[str, int], np.ndarray] = {}
+    for g in kalshi_games:
+        fav = g["ts"]["fav_kalshi_vwap"].values
+        kalshi_precomp[(g["ticker"], kalshi_lookback_bins)] = (
+            _precompute_trailing_max(fav, kalshi_lookback_bins)
+        )
+    kalshi_trades = simulate_s4a(kalshi_games, best_cfg, kalshi_precomp)
+    kalshi_summary = summarize_s4a(kalshi_trades, len(kalshi_games))
+
+    # ESPN subset on competitive only
+    espn_competitive = [g for g in games if g["abs_spread"] <= 6.0]
+    espn_comp_trades = simulate_s4a(espn_competitive, best_cfg, precomp_max)
+    espn_comp_summary = summarize_s4a(
+        espn_comp_trades, len(espn_competitive),
+    )
+
+    # ---- Render report --------------------------------------------------
+    md: list[str] = []
+    md.append(
+        "# Strategy 4 — Part 8: Spread Expansion (Path A, ESPN Proxy)\n"
+    )
+    md.append(f"_Generated: {datetime.now(timezone.utc).isoformat()}_\n")
+    md.append(
+        f"Dataset: {n_games} games with ESPN PBP + WP data from "
+        "`data/nba_master_2025_26.csv`. S4A simulated against ESPN "
+        "win-probability treated as a directional proxy for Kalshi "
+        "favorite price. Best config from STRATEGY4_SPEC.md §3: "
+        f"lookback {BEST_S4A_LOOKBACK_SEC}s, dip ≥ "
+        f"${BEST_S4A_DIP_DEPTH:.2f}, entry ${BEST_S4A_ENTRY_LO:.2f}–"
+        f"${BEST_S4A_ENTRY_HI:.2f}, target ${BEST_S4A_EXIT_TARGET:.2f}, "
+        f"stop ${BEST_S4A_STOP_LOSS:.2f}.\n"
+    )
+    md.append(
+        "\n**Important caveat.** ESPN WP is NOT Kalshi price. ESPN "
+        "swings harder (compression mapping from the 168-game "
+        "aggregate: favorites swing ~5–8pp deeper on ESPN than on "
+        "Kalshi in mid WP zones). Entry rates, hit rates, and "
+        "P&L values below are ESPN-scale, not Kalshi-confirmed. "
+        "The Path A question is: *does the favorite-recovery "
+        "pattern exist at wider spreads?* Path B (on Kalshi trade "
+        "tapes from the full-season backfill) will produce the "
+        "confirmed numbers.\n"
+    )
+
+    # Table 1 — entry rate by bucket
+    md.append("\n## Table 1 — Entry rate by spread bucket\n")
+    md.append(
+        "| |spread| bucket | Games | Games with ≥1 entry | Entries | "
+        "Entries/game |\n"
+        "|---|---:|---:|---:|---:|\n"
+    )
+    for lab, _, _ in _SPREAD_BUCKETS:
+        s = bucket_stats[lab]
+        md.append(
+            f"| {lab} | {s['n_games']} | {s['games_with_entry']} | "
+            f"{s['entries']} | {s['entries_per_game']:.2f} |\n"
+        )
+
+    # Table 2 — hit rate + mean P&L by bucket
+    md.append("\n## Table 2 — Hit rate and mean P&L by spread bucket\n")
+    md.append(
+        "| |spread| bucket | Entries | Hit % | Mean P&L | ESPN-scale annual EV |\n"
+        "|---|---:|---:|---:|---:|\n"
+    )
+    for lab, _, _ in _SPREAD_BUCKETS:
+        s = bucket_stats[lab]
+        if s["entries"] == 0:
+            md.append(f"| {lab} | 0 | — | — | — |\n")
+            continue
+        md.append(
+            f"| {lab} | {s['entries']} | {s['hit_pct']:.1f}% | "
+            f"${s['mean_pnl']:+.2f} | ${s['annual_ev']:+,.0f} |\n"
+        )
+
+    # Table 3 — entry price distribution
+    md.append("\n## Table 3 — Entry price distribution by spread bucket\n")
+    md.append(
+        "| |spread| bucket | n | Min | p25 | Median | p75 | Max |\n"
+        "|---|---:|---:|---:|---:|---:|---:|\n"
+    )
+    for lab, _, _ in _SPREAD_BUCKETS:
+        s = bucket_stats[lab]
+        prices = np.array(s["entry_prices"])
+        if len(prices) == 0:
+            md.append(f"| {lab} | 0 | — | — | — | — | — |\n")
+            continue
+        md.append(
+            f"| {lab} | {len(prices)} | ${prices.min():.2f} | "
+            f"${np.quantile(prices, 0.25):.2f} | "
+            f"${np.median(prices):.2f} | "
+            f"${np.quantile(prices, 0.75):.2f} | ${prices.max():.2f} |\n"
+        )
+
+    # Table 4 — sanity check Kalshi vs ESPN on |spread|≤6
+    md.append(
+        "\n## Table 4 — Sanity: Kalshi vs ESPN proxy on |spread|≤6\n"
+    )
+    md.append(
+        "Same strategy, same entry/exit rules, same filter band. "
+        "Compares the confirmed Kalshi run (165 competitive games) "
+        "against the ESPN-proxy run on the same (or nearly same) "
+        "universe. A large gap indicates the proxy misrepresents "
+        "entry frequency or P&L.\n\n"
+        "| Source | Games | Entries | Hit % | Mean P&L | Annual EV |\n"
+        "|---|---:|---:|---:|---:|---:|\n"
+        f"| Kalshi (confirmed) | {len(kalshi_games)} | "
+        f"{kalshi_summary['entries']} | {kalshi_summary['hit_pct']:.1f}% | "
+        f"${kalshi_summary['mean_pnl']:+.2f} | "
+        f"${kalshi_summary['annual_ev']:+,.0f} |\n"
+        f"| ESPN proxy | {len(espn_competitive)} | "
+        f"{espn_comp_summary['entries']} | "
+        f"{espn_comp_summary['hit_pct']:.1f}% | "
+        f"${espn_comp_summary['mean_pnl']:+.2f} | "
+        f"${espn_comp_summary['annual_ev']:+,.0f} |\n"
+    )
+
+    # Table 5 — projected expansion annual EV
+    md.append("\n## Table 5 — Projected expansion annual EV (ESPN-scale)\n")
+    md.append(
+        "Adds the 6.5+ buckets to the existing competitive universe. "
+        "**All numbers are ESPN-scale**, not Kalshi-confirmed. Use "
+        "Path B (full-season Kalshi backfill) before committing.\n\n"
+        "| Spread range | Games | Entries | Annual EV (ESPN-scale) |\n"
+        "|---|---:|---:|---:|\n"
+    )
+    total_games_exp = 0
+    total_entries_exp = 0
+    total_annual_exp = 0.0
+    for lab, _, _ in _SPREAD_BUCKETS:
+        s = bucket_stats[lab]
+        md.append(
+            f"| {lab} | {s['n_games']} | {s['entries']} | "
+            f"${s['annual_ev']:+,.0f} |\n"
+        )
+        total_games_exp += s["n_games"]
+        total_entries_exp += s["entries"]
+        total_annual_exp += s["annual_ev"]
+
+    # Split: existing universe (|spread|≤6) vs expansion
+    existing_labels = {"1.0–2.0", "2.5–3.5", "4.0–5.0", "5.5–6.0"}
+    existing_annual = sum(
+        bucket_stats[lab]["annual_ev"]
+        for lab in existing_labels if lab in bucket_stats
+    )
+    expansion_annual = total_annual_exp - existing_annual
+    md.append(
+        f"\n**Totals:** {total_games_exp} games, "
+        f"{total_entries_exp} entries, "
+        f"ESPN-scale annual EV ${total_annual_exp:+,.0f}.\n"
+        f"- Existing universe (|spread|≤6): "
+        f"${existing_annual:+,.0f} (ESPN-scale)\n"
+        f"- Expansion (|spread|>6): "
+        f"${expansion_annual:+,.0f} (ESPN-scale)\n"
+    )
+
+    REPORT_PART8_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_PART8_PATH.write_text("".join(md) + "\n")
+    log(f"Part 8 report → {REPORT_PART8_PATH}")
+    return 0
+
+
+# ---- Part 8 Path B: Kalshi-confirmed spread expansion -----------------
+
+def load_kalshi_games_all_spreads(min_bins: int = 10) -> list[dict]:
+    """Load every game with a Kalshi paired timeseries CSV and a known
+    |spread|, regardless of bucket. Mirrors load_competitive_games but
+    skips the |spread|≤6 filter. Games with an all-NaN `fav_kalshi_vwap`
+    column (typical of pre-cliff games whose trade tapes returned
+    empty) are dropped automatically by the dropna + length check.
+    """
+    meta = pd.read_csv(PAIRED_DIR / "matched_games.csv")
+    meta["abs_spread"] = pd.to_numeric(meta["abs_spread"], errors="coerce")
+    meta["home_spread"] = pd.to_numeric(meta["home_spread"], errors="coerce")
+    meta = meta.dropna(subset=["abs_spread"])
+    meta_map = {
+        str(r.kalshi_event_ticker): {
+            "abs_spread": float(r.abs_spread),
+            "home_spread": (
+                float(r.home_spread) if not pd.isna(r.home_spread) else None
+            ),
+            "espn_game_id": str(r.espn_game_id),
+        }
+        for r in meta.itertuples()
+    }
+
+    games: list[dict] = []
+    skipped_empty = 0
+    skipped_short = 0
+    for p in sorted(PAIRED_DIR.glob("*_timeseries.csv")):
+        m = TICKER_RE.match(p.stem)
+        if not m:
+            continue
+        ticker = m.group(1)
+        info = meta_map.get(ticker)
+        if info is None:
+            continue
+        df = pd.read_csv(p)
+        if df.empty:
+            skipped_empty += 1
+            continue
+        for c in ("game_seconds_elapsed", "period", "fav_kalshi_vwap"):
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
+        if df["fav_kalshi_vwap"].notna().sum() == 0:
+            skipped_empty += 1
+            continue
+        df["fav_kalshi_vwap"] = df["fav_kalshi_vwap"].ffill()
+        df = df.dropna(
+            subset=["game_seconds_elapsed", "fav_kalshi_vwap"]
+        ).sort_values("game_seconds_elapsed").reset_index(drop=True)
+        if len(df) < min_bins:
+            skipped_short += 1
+            continue
+        games.append({
+            "ticker": ticker,
+            "abs_spread": info["abs_spread"],
+            "espn_game_id": info["espn_game_id"],
+            "ts": df,
+        })
+    log(
+        f"  loaded {len(games)} Kalshi games; "
+        f"skipped {skipped_empty} (empty tape) + "
+        f"{skipped_short} (too short)"
+    )
+    return games
+
+
+def run_part8_path_b() -> int:
+    log("Part 8 Path B — Kalshi-confirmed spread expansion")
+    log("Loading Kalshi paired timeseries (all spread buckets)...")
+    games = load_kalshi_games_all_spreads()
+    n_games = len(games)
+    log(f"Kalshi games loaded: {n_games}")
+    if n_games == 0:
+        log("FAIL: no Kalshi games available for Path B.")
+        return 2
+
+    bucket_games: dict[str, list[dict]] = {}
+    for g in games:
+        lab = _bucket_for_spread(g["abs_spread"])
+        if lab is None:
+            continue
+        bucket_games.setdefault(lab, []).append(g)
+
+    lookback_bins = max(1, int(BEST_S4A_LOOKBACK_SEC / BUCKET_SEC))
+    log(f"Precomputing trailing max (lookback={lookback_bins} bins)...")
+    precomp_max: dict[tuple[str, int], np.ndarray] = {}
+    for g in games:
+        fav = g["ts"]["fav_kalshi_vwap"].values
+        precomp_max[(g["ticker"], lookback_bins)] = (
+            _precompute_trailing_max(fav, lookback_bins)
+        )
+
+    best_cfg = S4AConfig(
+        lookback_sec=BEST_S4A_LOOKBACK_SEC,
+        dip_depth=BEST_S4A_DIP_DEPTH,
+        entry_lo=BEST_S4A_ENTRY_LO,
+        entry_hi=BEST_S4A_ENTRY_HI,
+        exit_target=BEST_S4A_EXIT_TARGET,
+        stop_loss=BEST_S4A_STOP_LOSS,
+    )
+
+    log("Simulating S4A per bucket on Kalshi data...")
+    bucket_stats: dict[str, dict] = {}
+    bucket_trades_all: dict[str, list[S4ATrade]] = {}
+    for lab, _, _ in _SPREAD_BUCKETS:
+        gs = bucket_games.get(lab, [])
+        if not gs:
+            bucket_stats[lab] = {
+                "n_games": 0, "entries": 0, "games_with_entry": 0,
+                "entries_per_game": 0.0, "hit_pct": 0.0,
+                "mean_pnl": 0.0, "annual_ev": 0.0, "entry_prices": [],
+            }
+            bucket_trades_all[lab] = []
+            continue
+        trades = simulate_s4a(gs, best_cfg, precomp_max)
+        summary = summarize_s4a(trades, len(gs))
+        games_with_entry = len({t.ticker for t in trades})
+        bucket_stats[lab] = {
+            "n_games": len(gs),
+            "entries": summary["entries"],
+            "games_with_entry": games_with_entry,
+            "entries_per_game": (
+                summary["entries"] / len(gs) if gs else 0.0
+            ),
+            "hit_pct": summary["hit_pct"],
+            "mean_pnl": summary["mean_pnl"],
+            "annual_ev": summary["annual_ev"],
+            "entry_prices": [t.entry_price for t in trades],
+        }
+        bucket_trades_all[lab] = trades
+
+    # Sanity: |spread|≤6 rollup for comparison with replay baseline.
+    comp_games = [g for g in games if g["abs_spread"] <= 6.0]
+    comp_trades = simulate_s4a(comp_games, best_cfg, precomp_max)
+    comp_summary = summarize_s4a(comp_trades, len(comp_games))
+
+    # Table 6 — Path A vs Path B overlap per bucket.
+    log("Loading ESPN games for Path A vs Path B overlap comparison...")
+    espn_games = load_all_espn_games()
+    espn_by_id = {g["ticker"].replace("ESPN-", ""): g for g in espn_games}
+    # Precompute ESPN trailing max for only the overlap games we will
+    # actually simulate (subset of ESPN games whose espn_game_id matches
+    # a Kalshi game we loaded).
+    overlap_precomp: dict[tuple[str, int], np.ndarray] = {}
+    overlap_rows: dict[str, dict] = {}
+    for lab, _, _ in _SPREAD_BUCKETS:
+        kalshi_subset = bucket_games.get(lab, [])
+        if not kalshi_subset:
+            overlap_rows[lab] = {"n_overlap": 0}
+            continue
+        kalshi_overlap = [
+            g for g in kalshi_subset if g["espn_game_id"] in espn_by_id
+        ]
+        espn_overlap = [
+            espn_by_id[g["espn_game_id"]] for g in kalshi_overlap
+        ]
+        for g in espn_overlap:
+            key = (g["ticker"], lookback_bins)
+            if key not in overlap_precomp:
+                fav = g["ts"]["fav_kalshi_vwap"].values
+                overlap_precomp[key] = _precompute_trailing_max(
+                    fav, lookback_bins,
+                )
+        if not kalshi_overlap:
+            overlap_rows[lab] = {"n_overlap": 0}
+            continue
+        espn_trades = simulate_s4a(espn_overlap, best_cfg, overlap_precomp)
+        espn_s = summarize_s4a(espn_trades, len(espn_overlap))
+        kalshi_trades_in = simulate_s4a(
+            kalshi_overlap, best_cfg, precomp_max,
+        )
+        kalshi_s = summarize_s4a(kalshi_trades_in, len(kalshi_overlap))
+        overlap_rows[lab] = {
+            "n_overlap": len(kalshi_overlap),
+            "espn_entries": espn_s["entries"],
+            "espn_hit": espn_s["hit_pct"],
+            "espn_mean": espn_s["mean_pnl"],
+            "kalshi_entries": kalshi_s["entries"],
+            "kalshi_hit": kalshi_s["hit_pct"],
+            "kalshi_mean": kalshi_s["mean_pnl"],
+        }
+
+    # ---- Render report -------------------------------------------------
+    md: list[str] = []
+    md.append(
+        "# Strategy 4 — Part 8: Spread Expansion (Path B, Kalshi Confirmed)\n"
+    )
+    md.append(f"_Generated: {datetime.now(timezone.utc).isoformat()}_\n")
+    md.append(
+        f"Dataset: {n_games} games with Kalshi paired timeseries "
+        "CSVs from `data/wp_kalshi_paired/`. S4A simulated directly "
+        "on `fav_kalshi_vwap` (30s VWAP from the Kalshi trade tape, "
+        "same column `engine/replay.py` uses). Config from "
+        "STRATEGY4_SPEC.md §3: lookback "
+        f"{BEST_S4A_LOOKBACK_SEC}s, dip ≥ ${BEST_S4A_DIP_DEPTH:.2f}, "
+        f"entry ${BEST_S4A_ENTRY_LO:.2f}–${BEST_S4A_ENTRY_HI:.2f}, "
+        f"target ${BEST_S4A_EXIT_TARGET:.2f}, "
+        f"stop ${BEST_S4A_STOP_LOSS:.2f}.\n"
+    )
+    md.append(
+        "\n**Path B uses Kalshi-confirmed prices only.** Games whose "
+        "trade tape returned empty (typical of pre-retention-cliff "
+        "games) are excluded rather than backfilled with the ESPN "
+        "proxy — Path A (`strategy4_spread_expansion.md`) remains the "
+        "ESPN-only reference.\n"
+    )
+
+    # Table 1
+    md.append("\n## Table 1 — Entry rate by spread bucket\n")
+    md.append(
+        "| |spread| bucket | Games | Games with ≥1 entry | Entries | "
+        "Entries/game |\n"
+        "|---|---:|---:|---:|---:|\n"
+    )
+    for lab, _, _ in _SPREAD_BUCKETS:
+        s = bucket_stats[lab]
+        md.append(
+            f"| {lab} | {s['n_games']} | {s['games_with_entry']} | "
+            f"{s['entries']} | {s['entries_per_game']:.2f} |\n"
+        )
+
+    # Table 2
+    md.append("\n## Table 2 — Hit rate and mean P&L by spread bucket\n")
+    md.append(
+        "| |spread| bucket | Entries | Hit % | Mean P&L | "
+        "Kalshi-confirmed annual EV |\n"
+        "|---|---:|---:|---:|---:|\n"
+    )
+    for lab, _, _ in _SPREAD_BUCKETS:
+        s = bucket_stats[lab]
+        if s["entries"] == 0:
+            md.append(f"| {lab} | 0 | — | — | — |\n")
+            continue
+        md.append(
+            f"| {lab} | {s['entries']} | {s['hit_pct']:.1f}% | "
+            f"${s['mean_pnl']:+.2f} | ${s['annual_ev']:+,.0f} |\n"
+        )
+
+    # Table 3
+    md.append("\n## Table 3 — Entry price distribution by spread bucket\n")
+    md.append(
+        "| |spread| bucket | n | Min | p25 | Median | p75 | Max |\n"
+        "|---|---:|---:|---:|---:|---:|---:|\n"
+    )
+    for lab, _, _ in _SPREAD_BUCKETS:
+        s = bucket_stats[lab]
+        prices = np.array(s["entry_prices"])
+        if len(prices) == 0:
+            md.append(f"| {lab} | 0 | — | — | — | — | — |\n")
+            continue
+        md.append(
+            f"| {lab} | {len(prices)} | ${prices.min():.2f} | "
+            f"${np.quantile(prices, 0.25):.2f} | "
+            f"${np.median(prices):.2f} | "
+            f"${np.quantile(prices, 0.75):.2f} | ${prices.max():.2f} |\n"
+        )
+
+    # Table 4 — replay parity check on |spread|≤6
+    md.append(
+        "\n## Table 4 — Parity check vs engine replay (|spread|≤6)\n"
+    )
+    md.append(
+        "Path B on the |spread|≤6 subset should closely match the "
+        "engine replay's equivalence run against `simulate_s4a`, since "
+        "both consume the same `fav_kalshi_vwap` column. Small deltas "
+        "are acceptable from different bucket rollup granularity; "
+        "large deltas indicate a Path B pipeline bug.\n\n"
+        "| Source | Games | Entries | Hit % | Mean P&L | Annual EV |\n"
+        "|---|---:|---:|---:|---:|---:|\n"
+        f"| Engine replay (2026-04-22) | 171 | 166 | 52.4% | "
+        "$+3.21 | $+1,708 |\n"
+        f"| Path B |spread|≤6 | {len(comp_games)} | "
+        f"{comp_summary['entries']} | "
+        f"{comp_summary['hit_pct']:.1f}% | "
+        f"${comp_summary['mean_pnl']:+.2f} | "
+        f"${comp_summary['annual_ev']:+,.0f} |\n"
+    )
+
+    # Table 5 — projected expansion
+    md.append("\n## Table 5 — Projected annual EV (Kalshi-confirmed)\n")
+    md.append(
+        "Full breakdown across all spread buckets, then the two "
+        "incremental rollups (existing universe vs expansion).\n\n"
+        "| Spread range | Games | Entries | Annual EV |\n"
+        "|---|---:|---:|---:|\n"
+    )
+    total_games = 0
+    total_entries = 0
+    total_annual = 0.0
+    existing_annual = 0.0
+    existing_games = 0
+    existing_entries = 0
+    existing_labels = {"1.0–2.0", "2.5–3.5", "4.0–5.0", "5.5–6.0"}
+    for lab, _, _ in _SPREAD_BUCKETS:
+        s = bucket_stats[lab]
+        md.append(
+            f"| {lab} | {s['n_games']} | {s['entries']} | "
+            f"${s['annual_ev']:+,.0f} |\n"
+        )
+        total_games += s["n_games"]
+        total_entries += s["entries"]
+        total_annual += s["annual_ev"]
+        if lab in existing_labels:
+            existing_games += s["n_games"]
+            existing_entries += s["entries"]
+            existing_annual += s["annual_ev"]
+    expansion_games = total_games - existing_games
+    expansion_entries = total_entries - existing_entries
+    expansion_annual = total_annual - existing_annual
+    md.append(
+        f"| **Existing (|spread|≤6)** | **{existing_games}** | "
+        f"**{existing_entries}** | **${existing_annual:+,.0f}** |\n"
+        f"| **Expansion (|spread|>6)** | **{expansion_games}** | "
+        f"**{expansion_entries}** | **${expansion_annual:+,.0f}** |\n"
+        f"| **All buckets** | **{total_games}** | "
+        f"**{total_entries}** | **${total_annual:+,.0f}** |\n"
+    )
+
+    # Table 6 — Path A vs Path B on overlap
+    md.append(
+        "\n## Table 6 — Path A (ESPN proxy) vs Path B (Kalshi) on the same games\n"
+    )
+    md.append(
+        "For each bucket, simulate both variants on only the games "
+        "that have BOTH ESPN PBP/WP AND Kalshi trade-tape data. "
+        "Quantifies the ESPN-to-Kalshi bias per bucket and validates "
+        "the compression mapping used in Path A.\n\n"
+        "| |spread| bucket | Games (overlap) | "
+        "ESPN entries / hit / mean | Kalshi entries / hit / mean |\n"
+        "|---|---:|---|---|\n"
+    )
+    for lab, _, _ in _SPREAD_BUCKETS:
+        row = overlap_rows[lab]
+        if row["n_overlap"] == 0:
+            md.append(f"| {lab} | 0 | — | — |\n")
+            continue
+        md.append(
+            f"| {lab} | {row['n_overlap']} | "
+            f"{row['espn_entries']} / {row['espn_hit']:.1f}% / "
+            f"${row['espn_mean']:+.2f} | "
+            f"{row['kalshi_entries']} / {row['kalshi_hit']:.1f}% / "
+            f"${row['kalshi_mean']:+.2f} |\n"
+        )
+
+    REPORT_PART8B_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_PART8B_PATH.write_text("".join(md) + "\n")
+    log(f"Part 8 Path B report → {REPORT_PART8B_PATH}")
+    return 0
+
+
 # ---- Main --------------------------------------------------------------
 
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Strategy 4 analysis driver. Default run: Parts 1–6 "
+            "(core sweep + position management). Use --part7 / --part8 "
+            "for the extension studies in isolation."
+        ),
+    )
+    grp = parser.add_mutually_exclusive_group()
+    grp.add_argument(
+        "--part7", action="store_true",
+        help="Run only Part 7 (halftime entry study).",
+    )
+    grp.add_argument(
+        "--part8", action="store_true",
+        help="Run only Part 8 (spread expansion). Pair with --path-b "
+             "for Kalshi-confirmed prices; default is ESPN-only Path A.",
+    )
+    parser.add_argument(
+        "--path-b", dest="path_b", action="store_true",
+        help="With --part8: use Kalshi trade-tape VWAP instead of "
+             "ESPN proxy. Writes to strategy4_spread_expansion_kalshi.md "
+             "and preserves the ESPN Path A report.",
+    )
+    args = parser.parse_args()
+
+    if args.part7:
+        if args.path_b:
+            parser.error("--path-b is only valid with --part8.")
+        return run_part7()
+    if args.part8:
+        if args.path_b:
+            return run_part8_path_b()
+        return run_part8()
+    if args.path_b:
+        parser.error("--path-b requires --part8.")
+    return run_default()
+
+
+def run_default() -> int:
     log("Loading competitive games...")
     games = load_competitive_games()
     n_games = len(games)

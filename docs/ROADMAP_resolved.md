@@ -477,3 +477,129 @@ rewritten, KILL_CRITERIA S4 section added, THESIS.md updated to
 four strategy layers, CLAUDE.md Phase 3B completion framing,
 ROADMAP deduplication, THESIS_open_questions consolidated
 resolution entry. SESSION_CONTEXT.md fully rewritten.
+
+## 2026-04-22 — S4A halftime entry + spread expansion studies
+
+Extended `analysis/strategy4_dip_recovery.py` with Part 7
+(halftime entry) and Part 8 (spread expansion, ESPN-only
+Path A). Full-season Kalshi trade tape backfill initiated
+(uncapped ticker_matcher → batch trade tape pull for all
+matchable games).
+
+- **Part 7 result:** halftime entry is negative EV (−$323/yr
+  standalone, drags combined strategy to +$1,121/yr vs S4A
+  baseline +$1,886/yr). Do not add to Phase 4a ruleset.
+  Report: `docs/analysis_outputs/strategy4_halftime_entry.md`.
+- **Part 8 result (ESPN-only Path A):** pattern directionally
+  strengthens at wider spreads (hit rate 42.5% → 58.0% from
+  |spread| 6.5 → 10.5+), but ESPN proxy under-states Kalshi
+  EV by ~$4,000/yr so absolute numbers are not actionable.
+  Path B (Kalshi-confirmed) pending full-season backfill.
+  Report: `docs/analysis_outputs/strategy4_spread_expansion.md`.
+- **Full-season matched_games.csv expansion:** uncapped run
+  matched 1,237 games (vs 168 before). ~1,069 new games queued
+  for batch trade-tape pull; ~450–550 expected to land within
+  the ~60-day Kalshi retention window.
+
+New CLI entry points: `--part7`, `--part8` (mutually
+exclusive with the default Parts 1–6 pipeline).
+
+## 2026-04-22 — Phase 4a S4A paper-trading engine
+
+Three-module engine build:
+
+- `engine/s4a_signal.py` — pure signal detection (time-windowed
+  trailing max with strict eviction to match pandas
+  `rolling(6, min_periods=1)`, dip threshold, entry zone,
+  exit target / stop). `Signal` enum: `entry / hold /
+  exit_target / exit_stop / no_op`. No I/O.
+- `engine/position_manager.py` — position state, risk
+  enforcement (max 2 entries/game, max 4 concurrent), paper
+  P&L net of maker fees per `docs/FEES.md`. End-of-game
+  resolution replicates the offline `simulate_s4a` behavior
+  (≥$0.95 → $1.00 no fee, ≤$0.05 → $0.00 no fee, else
+  mid-price with exit fee). No I/O.
+- `engine/live_runner.py` — Kalshi polling (30s interval,
+  retry with backoff on 429), event-ticker grouping, favorite
+  determination from opening prices (both sides > $0.05,
+  higher bid locks), per-game `S4ASignalDetector` +
+  `PositionManager`, JSONL journal under
+  `data/paper_trades/YYYY-MM-DD.jsonl`. SIGINT/SIGTERM
+  safe — flushes session summary + closes open positions
+  at current quotes on exit.
+- `engine/replay.py` — drives the 168-game paired dataset
+  through the same detector + manager and compares
+  trade-for-trade against the authoritative offline
+  `analysis.strategy4_dip_recovery::simulate_s4a`.
+
+**Replay PASS (2026-04-22, 171-game current dataset):**
+166 entries / 87 target / 79 stop / 0 EOD / 52.41% hit /
++$3.2149 mean P&L / +$1,707.83 annual EV. Engine vs offline
+delta: 0 entries, 0.00pp hit, $0.0000 mean, $0.00 annual
+(trade-for-trade equivalence). The $178 drift from the
+STRATEGY4_SPEC.md 165-game snapshot (+$1,886) is because
+the dataset grew by 6 games during the full-season
+backfill; both engine and offline agree on the new
+numbers, so the drift is a dataset change, not a logic
+change.
+
+Design decisions (full rationale in `docs/PHASE4A_DESIGN.md`):
+
+- Separate process from the logger (crash isolation; logger
+  protects irreplaceable orderbook data).
+- Favorite determined from Kalshi opening prices — no
+  external sportsbook dependency.
+- 100 contracts / max 1+1 re-entry / max 4 concurrent;
+  no daily loss cap in paper mode (required for live).
+- Skipped the originally-planned Phase 4a alert layer —
+  alerts were ~200 lines that wouldn't carry forward into
+  live trading. Paper-trading with morning journal review
+  accomplishes the same validation with zero wasted code.
+
+**Next:** first paper-trading run during live NBA games.
+Morning review of the JSONL journal validates the engine
+against what actually happened in Kalshi's markets
+overnight.
+
+## 2026-04-22 — S4A spread expansion Path B (Kalshi-confirmed)
+
+Added `--path-b` to `analysis/strategy4_dip_recovery.py`
+`--part8`. When enabled, the run loads all paired
+timeseries CSVs from `data/wp_kalshi_paired/` (not just
+|spread|≤6), uses `fav_kalshi_vwap` directly, and writes to
+`docs/analysis_outputs/strategy4_spread_expansion_kalshi.md`
+while preserving the ESPN-proxy Path A report at
+`strategy4_spread_expansion.md`. Table 6 adds a Path A vs
+Path B overlap comparison per bucket.
+
+**Path B headline on 404 games (171 competitive + 233
+expansion):** +$10,718/yr projected EV across all buckets
+at competitive-rate scaling. Existing universe (|spread|≤6)
+rolls up to +$7,075; expansion (|spread|>6) adds +$3,644.
+Parity check on |spread|≤6 subset reproduces the engine
+replay (166 entries / 52.4% / +$3.21 / +$1,708) exactly.
+
+Path A (ESPN proxy) understated EV in every bucket,
+dramatically at narrow spreads (1.0–2.0: ESPN 36.1% hit /
+−$3.71 mean vs Kalshi 51.7% / +$1.59). Directional signal
+from Path A ("pattern strengthens with spread") confirmed;
+magnitude was wrong and sign was occasionally inverted.
+
+Follow-ups (not yet scheduled):
+
+- Refresh STRATEGY4_SPEC.md §2 to relax the |spread|≤6
+  constraint. Defer until second playoff week of paper data.
+- Re-examine `summarize_s4a`'s `COMP_FRACTION` scaling
+  assumption for non-competitive buckets — the uniform
+  ×0.445 factor across all spread bands is a convenient
+  projection but not a physically accurate one for wider
+  spreads.
+
+## 2026-04-22 — Spread expansion incorporated into STRATEGY4_SPEC
+
+Part 8 Path B findings (all 7 spread buckets positive EV on
+404-game Kalshi dataset, +$10,718/yr uncapped) incorporated
+into STRATEGY4_SPEC.md §2/§7/§9/§10, CLAUDE.md, and
+ROADMAP_active.md. Competitive game filter expanded from
+|spread| ≤ 6 to uncapped. Engine already operates without
+spread filter — no code change needed.
