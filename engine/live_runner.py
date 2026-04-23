@@ -49,6 +49,11 @@ SETTLE_THRESHOLD = 0.05           # ignore quotes below this (pre-tip penny grid
 REQUEST_TIMEOUT_SEC = 10
 MAX_RETRIES = 3
 BACKOFF_BASE_SEC = 0.5
+# If the wall-clock gap between cycle starts exceeds this, emit a
+# warning. Catches the macOS App Nap / suspend case where the Python
+# process sleeps through multiple poll intervals — the warning appears
+# once the loop resumes so the operator knows ticks were missed.
+CYCLE_GAP_WARN_SEC = 60
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 JOURNAL_DIR = REPO_ROOT / "data" / "paper_trades"
@@ -455,11 +460,30 @@ def run_session(args: argparse.Namespace) -> int:
 
 def _poll_loop(session: Session) -> None:
     args = session.args
+    cycle = 0
+    last_cycle_start: float | None = None
     while True:
         if session._interrupted:
             log("Shutdown flagged — exiting poll loop.")
             return
         now = time.time()
+
+        # Gap detector — catches macOS App Nap / suspend where the loop
+        # slept through the poll interval. Surfaces once the loop
+        # resumes so missed ticks are visible in stdout.
+        if last_cycle_start is not None:
+            gap = now - last_cycle_start
+            if gap > CYCLE_GAP_WARN_SEC:
+                log(
+                    f"WARN: cycle gap {gap:.0f}s exceeds "
+                    f"{CYCLE_GAP_WARN_SEC}s threshold "
+                    f"(expected ~{POLL_INTERVAL_SEC}s). Process may have "
+                    "been suspended (App Nap, clamshell sleep, network "
+                    "hang). Ticks for the gap window are missing."
+                )
+        last_cycle_start = now
+        cycle += 1
+
         if now - session.started_at > args.max_run_sec:
             log(
                 f"max_run_sec {args.max_run_sec}s reached "
@@ -468,10 +492,12 @@ def _poll_loop(session: Session) -> None:
             return
 
         active_any = False
+        ticked = 0
         for ctx in session.games.values():
             if ctx.finished:
                 continue
             active_any = True
+            ticked += 1
             _tick_one_game(session, ctx, now)
 
         if not active_any:
@@ -484,6 +510,18 @@ def _poll_loop(session: Session) -> None:
                 "no active market activity. Exiting."
             )
             return
+
+        # Heartbeat — one line per cycle so the terminal shows the
+        # engine is alive without tailing the journal. Includes position
+        # state + entries-to-date for at-a-glance session health.
+        mgr_summary = session.manager.summary()
+        log(
+            f"cycle {cycle}: {ticked} games polled, "
+            f"{mgr_summary['open_positions']} positions open, "
+            f"{mgr_summary['entries']} entries / "
+            f"{mgr_summary['closes']} closes / "
+            f"${mgr_summary['total_pnl']:+.2f} net P&L so far"
+        )
 
         time.sleep(POLL_INTERVAL_SEC)
 

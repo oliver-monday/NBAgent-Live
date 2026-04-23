@@ -146,6 +146,50 @@ to be awake during late-night West Coast games.
 
 ---
 
+## Decision 6 — Stop-loss execution model
+
+Kalshi has no native stop-loss order type. The stop execution
+study (`docs/analysis_outputs/strategy4_stop_execution.md`)
+analyzed 132 stop events across 404 games and established:
+
+- 50% of stops are clean crosses at the $0.40 level; 17.4%
+  gap severely past $0.34.
+- Break-even stop price is $0.312 — the strategy stays
+  positive even under worst-case taker execution.
+- 73.5% of stops are flash crashes (price above $0.45 just
+  60 seconds before).
+
+**Execution model (Scenario B):**
+
+1. At S4A entry (buy 100 YES at entry_price), simultaneously
+   place a resting NO buy at $0.60 for 100 contracts.
+2. At target hit ($0.90), cancel the resting NO order and
+   sell YES at $0.90 (resting YES ask, maker).
+3. If the NO buy fills (stop triggered): the position is
+   closed — the engine holds offsetting YES + NO positions
+   that net to zero at resolution. Cancel any resting YES
+   ask. Log as stop exit at $0.40 equivalent with maker fee.
+4. If price reaches $0.34 and the NO buy has NOT filled:
+   severe gap detected. Cancel the NO buy immediately and
+   submit a taker YES sell at market. Log the realized exit
+   price and slippage.
+
+**Why NO buy at $0.60, not YES sell at $0.40:** when the
+favorite is collapsing, the NO price is rising through $0.60.
+A resting NO buy at $0.60 provides liquidity to NO sellers
+as the NO price passes through — you're on the natural side
+of the flow. A resting YES sell at $0.40 requires a YES
+buyer during a crash, which fights the prevailing flow.
+
+**Paper-trading implication:** the paper-trading engine does
+not submit real orders, so the distinction is moot for
+Phase 4a. The journal should log the stop at the observed
+VWAP (Scenario C behavior) so that paper P&L reflects the
+conservative case. The engine code change to implement
+Scenario B is part of the Paper → Live delta below.
+
+---
+
 ## Paper → Live delta
 
 What has to be built to promote the paper-trading engine to a
@@ -165,8 +209,16 @@ real-money system:
    watch for a fill within N seconds; cancel and re-price if not
    filled. ~50 lines.
 
-Total: ~270 lines on top of the current engine. The signal
-detector and position manager do not change.
+5. **Stop-loss execution via NO-side resting order.** At
+   entry, place a resting NO buy at $0.60 (100 contracts).
+   Monitor for fill (= stop triggered). Severe-gap fallback:
+   if fav VWAP ≤ $0.34 and NO buy unfilled, cancel + taker
+   sell YES at market. ~60 lines in `position_manager.py`
+   and `live_runner.py`.
+
+Total: ~330 lines on top of the current engine. The signal
+detector does not change; position manager gains stop-order
+state tracking.
 
 ---
 

@@ -15,7 +15,7 @@ single actionable reference. Companion to `STRATEGY3_SPEC.md`.
 - **Tested-and-rejected** — analyzed and found not to improve
   the strategy.
 
-Last updated: 2026-04-22.
+Last updated: 2026-04-22 (stop execution study incorporated).
 
 ---
 
@@ -121,6 +121,54 @@ because too many recoveries stall in the $0.90–$0.94 range.
 This is the "market has genuinely lost faith" threshold. Below
 $0.40, the favorite is in S3 territory — a fundamentally
 different and riskier regime.
+
+### Stop-loss execution reality (from stop execution study)
+
+Kalshi has no native stop-loss order type. The recommended
+execution model for stops is a **resting NO buy at $0.60**
+(economically equivalent to selling YES at $0.40), placed at
+entry time for maximum queue priority.
+
+**Gap-through risk (132 stop events, 404-game dataset):**
+
+| Category | Definition | % of stops |
+|----------|-----------|-----------|
+| Clean cross | stop VWAP $0.38–$0.42 | 50.0% |
+| Moderate gap | stop VWAP $0.34–$0.38 | 32.6% |
+| Severe gap | stop VWAP < $0.34 | 17.4% |
+
+73.5% of stops are flash crashes (price was above $0.45
+just 60 seconds before the stop fires). Median dwell time
+at the $0.38–$0.42 band is 0 bins — the price typically
+blows through $0.40 rather than lingering.
+
+**EV under execution scenarios (deltas are load-bearing):**
+
+| Scenario | Annual EV | Δ vs baseline |
+|----------|-----------|--------------|
+| A — Baseline (stops at $0.40, maker) | +$1,410 | — |
+| B — Maker NO-side resting + taker fallback | +$1,460 | +$49 |
+| C — Taker stop at observed VWAP (worst case) | +$977 | −$433 |
+| D — Hybrid (resting + 60s cancel fallback) | +$1,131 | −$279 |
+
+**Break-even stop price: $0.312.** If average realized stop
+price is worse than this, S4A is unprofitable. This provides
+~$0.09 of margin below the $0.40 target — even with
+gap-throughs, the strategy remains positive.
+
+Note: absolute EVs here use pool-level annualization and
+differ from §9's per-bucket-summed rollup. The deltas
+between scenarios are the meaningful comparison.
+
+**Recommended execution model: Scenario B.**
+- At entry: place 100-contract resting NO buy at $0.60.
+- If price gaps to ≤ $0.34 and resting order unfilled:
+  cancel immediately, taker-sell YES at market.
+- Consider $0.61–$0.62 NO ($0.38–$0.39 YES) for higher
+  fill probability at small deterministic cost. Test in
+  Phase 4b.
+
+**Source:** `docs/analysis_outputs/strategy4_stop_execution.md`
 
 ### No resolution exposure
 
@@ -228,27 +276,23 @@ All 7 buckets are positive EV. Key patterns:
 
 ---
 
-## 8. Strategy 4B — Underdog side (secondary)
+## 8. Strategy 4B — KILLED (2026-04-23)
 
-Best config: momentum entry $0.25–$0.35, run $0.03, lookback
-300s, exit +$0.20, hybrid 50/50 hold-to-resolution.
+Revalidated on the 404-game expanded dataset. Prior result
+(+$1,105/yr on 168 games) collapsed to +$148/yr. Only 14 of
+1,323 configs produced positive EV (1.1%). Best config earned
+$0.19/entry — effectively zero after execution costs.
 
-| Metric | Value |
-|--------|-------|
-| Annual EV | +$1,105 |
-| Entries | 182 |
-| Mean P&L | +$1.83 |
-| Resolution win rate (held portion) | 12.6% |
+The resolution-lottery mechanic (12.6% underdog win rate on
+held portion) that drove the prior result was abandoned by
+the optimizer on the larger dataset. Best config uses pure
+swing with $0.05 stop, zero hold-to-resolution.
 
-S4B is positive but more fragile than S4A. The hybrid
-structure depends on the ~13% of held portions that resolve
-to $1.00 (underdog wins). Pure swing P&L without the
-resolution kicker is +$461/yr.
+3 of 7 spread buckets are negative EV. The 8.5–10.0 bucket
+alone provides +$1,839 of +$148 total — consistent with
+noise, not structure.
 
-The resolution-lottery math (Part 3D) shows only the
-$0.10–$0.15 entry band has positive hold-to-resolution EV.
-S4B is not recommended for Phase 4 deployment until
-validated with more data.
+Full analysis: `docs/analysis_outputs/strategy4b_revalidation.md`.
 
 ---
 
@@ -276,20 +320,17 @@ anchor.
 
 | Strategy | Annual EV | Status |
 |----------|-----------|--------|
-| S1 bilateral | +$1,608 | Confirmed, deployment-ready |
 | S4A dip-recovery (core, |spread| ≤ 6) | +$7,075 | Kalshi-confirmed |
 | S4A dip-recovery (expansion, |spread| > 6) | +$3,644 | Kalshi-confirmed, thin samples |
-| S3 filtered (validated) | +$578–$825 | Validated via holdout |
-| S4B underdog hybrid | +$1,105 | Positive but needs more data |
-| **S1 + S4A (core) + S3** | **+$9,261–$9,508** | Conservative combined |
-| **S1 + S4A (all) + S3** | **+$12,904–$13,151** | Full combined (noisy) |
+| S3 filtered | +$578–$825 | Holdout-validated |
+| ~~S1 bilateral~~ | ~~+$4,000–$5,600~~ | KILLED 2026-04-23 |
+| ~~S4B underdog hybrid~~ | ~~+$1,105~~ | KILLED 2026-04-23 |
+| **S4A (core) + S3** | **+$7,653–$7,900** | Conservative combined |
+| **S4A (all) + S3** | **+$11,297–$11,544** | Full combined |
 
-These strategies operate in different price zones and should
-not conflict: S1 catches bilateral dips below $0.40, S3
-catches filtered single-side dips at $0.40 with specific
-conditions, S4A catches favorite dips in the $0.50–$0.75
-range. A single game could trigger multiple strategies at
-different points.
+S1 and S4B both failed on the underdog side — no exit strategy
+overcomes the low base rate (~12–18% win probability). The
+remaining strategies operate exclusively on the favorite side.
 
 ---
 
@@ -310,10 +351,27 @@ different points.
    estimates will tighten. Monitor per-bucket stability as
    data grows.
 
-3. **Live execution dynamics.** 30-second VWAP bins may mask
-   sub-second price action. Real fills at the $0.40 stop
-   especially may face slippage. The $0.08 dip threshold
-   should provide buffer.
+3. **Live execution dynamics — RESOLVED.** Three-part
+   investigation (2026-04-22):
+   - *Stop execution reality:* 50% clean crosses, 17.4%
+     severe gaps, break-even stop price $0.312. Scenario B
+     (NO-side resting order at $0.60) recommended.
+   - *Params sweep ($0.58–$0.65 NO bid):* suggested $0.58
+     NO / $0.30 fallback (+$492/yr vs baseline), but
+     repriced existing stops only — blind to converted
+     winners.
+   - *Full sensitivity sweep ($0.35–$0.45 stop, 404 games):*
+     refuted $0.42 (6 converted winners, net −$15/yr vs
+     $0.40). Identified $0.35 as pooled optimum (+$227/yr
+     vs $0.40) but curve is bimodal and 5/7 spread buckets
+     disagree with the pooled optimum — consistent with
+     noise, not structure.
+   **Conclusion:** $0.40 stop confirmed robust on the
+   expanded dataset. All 11 stop levels ($0.35–$0.45) are
+   positive EV. No parameter change warranted. Remaining
+   open: target-exit fill quality in live conditions
+   (31.8% of targets gap past $0.90 — beneficial, monitor
+   in paper trading).
 
 4. **Playoff vs regular season.** All 404 paired games are
    predominantly regular season (Feb 20 – Apr 15, 2026). Playoff game

@@ -64,9 +64,14 @@ until research produces a validated strategy spec.** Progress:
        management tested (baseline optimal). Prior-weighting
        tested (not useful). S4B underdog hybrid +$1,105/yr,
        needs more data.
-     - **Phase 4a unlocked.** Three validated alpha sources
-       (S1 +$1,608, S4A +$7,075 core / +$10,718 uncapped,
-       S3-filtered +$578–$825), combined ~$9,261–$13,151/yr.
+     - **Phase 4a unlocked.** Two validated alpha sources
+       (S4A +$7,075 core / +$10,718 uncapped,
+       S3-filtered +$578–$825), combined
+       ~$7,653–$7,900/yr (core). S1 bilateral and S4B
+       underdog hybrid both killed 2026-04-23 (no
+       positive-EV configs on 404-game dataset). Specs:
+       `docs/STRATEGY4_SPEC.md`, `docs/STRATEGY1_SPEC.md`
+       (kill record).
    - Phase 3B formal COMPLETE (see above).
 4. **Phase 4** — Live decision engine. **Phase 4a unlocked
    2026-04-21.** Scoping in progress.
@@ -243,6 +248,11 @@ memory as starting from the first session's context.
   uncapped across all spreads). Includes false-summit exit
   analysis, spread expansion by bucket, prior-weighting
   results, position management conclusions.
+- `docs/STRATEGY1_SPEC.md` — **Strategy 1 kill record.**
+  Bilateral convergence / underdog swing trade: killed
+  2026-04-23. Zero positive-EV configs on 404-game dataset.
+  Prior +$5,603/yr estimate was based on a simulation design
+  error (mutually exclusive outcomes combined in same P&L).
 - `docs/THESIS.md` — long-term project thesis and framing.
 - `docs/RESEARCH_LOG.md` — current findings, what has and hasn't
   been validated yet.

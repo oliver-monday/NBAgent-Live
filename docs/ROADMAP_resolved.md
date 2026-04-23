@@ -603,3 +603,142 @@ into STRATEGY4_SPEC.md §2/§7/§9/§10, CLAUDE.md, and
 ROADMAP_active.md. Competitive game filter expanded from
 |spread| ≤ 6 to uncapped. Engine already operates without
 spread filter — no code change needed.
+
+## 2026-04-22 — Stop-loss execution reality study
+
+New script `analysis/strategy4_stop_execution.py`. Analyzed
+132 stop events across 404 Kalshi-confirmed games. 50% clean
+crosses at $0.40, 32.6% moderate gaps ($0.34–$0.38), 17.4%
+severe gaps (< $0.34). 73.5% are flash crashes. Break-even
+stop price $0.312. Recommended Scenario B: resting NO buy at
+$0.60 placed at entry time, taker fallback on severe gaps.
+EV impact: Scenario B +$1,460/yr (vs $1,410 baseline, vs
+$977 worst-case taker). Findings incorporated into
+STRATEGY4_SPEC.md §4 and PHASE4A_DESIGN.md Decision 6.
+
+## 2026-04-22 — Bucket 5.5–6.0 investigation
+
+New script `analysis/strategy4_bucket_investigation.py`.
+Deep dive on the |spread| 5.5–6.0 bucket's +$6.17 mean P&L
+outperformance (n=37 entries, 28 distinct games). Leave-one-
+out mean range $5.32–$7.55 (never negative). Bootstrap 95%
+CI: −$2.90 to +$14.73, P(mean>0)=91.1%. Adjacent-bucket
+comparison shows similar entry profiles but 16.6pp hit rate
+advantage over 4.0–5.0 bucket. Verdict: inconclusive at
+current sample size — positive and stable but can't confirm
+structural vs noise. Revisit as data grows.
+
+## 2026-04-22 — Stop params sweep + full sensitivity sweep
+
+Two scripts closing the stop-level investigation:
+- `analysis/strategy4_stop_params.py`: swept NO bid
+  ($0.58–$0.65) × fallback ($0.30–$0.38) across 132 stop
+  events. Found $0.58/$0.30 optimal (+$2,252/yr) but
+  methodology only repriced existing stops.
+- `analysis/strategy4_stop_sensitivity.py`: full S4A
+  re-simulation at 11 stop levels ($0.35–$0.45) across
+  404 games. Refuted $0.42 recommendation (6 converted
+  winners, −$15/yr vs $0.40). Identified $0.35 as pooled
+  optimum (+$227/yr) but bimodal curve and 5/7 bucket
+  disagreement indicate noise. Conclusion: $0.40 confirmed
+  robust, no parameter change.
+
+## 2026-04-23 — S1 bilateral operational simulation
+
+New script `analysis/strategy1_bilateral_sim.py`. Simulates
+S1 bilateral position construction on the full 404-game Kalshi
+paired dataset. Three entry policies (any-observation,
+downward-crossing, warmup) × 14 asymmetric threshold pairs ×
+per-game tick replay. Stranded-leg outcomes under 8 exit
+strategies (hold-to-resolution, time-based abandonment at
+5/10/15/20/30 min, price-based stops at $0.10/$0.15/$0.20).
+
+Recommended operating point: Policy A (any observation ≤ $0.35)
+at thresholds (X=0.20, Y=0.35) with T5 stranded exit.
+Annual EV: +$5,603/yr (upper bound). 90 bilateral completions
+(+$4,817) + 314 T5 exits (-$681) across 404 games. All 7
+spread buckets positive EV.
+
+Key structural finding: 100% of bilateral completions are
+"collapse bilaterals" — leg 1 side has recovered to ≥$0.70
+by the time leg 2 fills. Leg 2 is always insurance during
+the other side's collapse. Mean insurance value +$4.36; 21%
+of cases actually saved (leg 1 side lost).
+
+Data approximation caveat: underdog price computed as
+1 - fav_vwap (no actual underdog bid available in paired
+pipeline). Real EV is est. 10-20% lower.
+
+## 2026-04-23 — S1 bilateral follow-up investigations
+
+New script `analysis/strategy1_bilateral_followup.py`. Three
+investigations on the recommended S1 operating point:
+
+1. Re-entry simulation (N=3, cooldown {1,10} × loss_cap
+   {none,$10,$20}): structurally broken. Bilateral completion
+   requires minimum 71 ticks (35.5 min) between legs; T5
+   exits at 10 ticks. Re-entry produces zero bilateral
+   completions — every additional entry is pure T5 churn.
+   All 6 configs negative EV (-$2,595 to -$2,871/yr).
+
+2. T5 exit P&L distribution: 32% profitable (mean +$2.88),
+   68% losses (mean -$4.53). Entry price $0.10-$0.15 is
+   sweetspot (53% profitable). Wide distribution (P10=-$8.62,
+   P90=+$3.39) but portfolio-level aggregation works because
+   bilateral wins (+$53.52 each) swamp T5 losses.
+
+3. Blowout filter (≥$0.80/≥$0.75/≥$0.70): improves per-game
+   EV but excluded games are themselves positive EV
+   (+$5-6/game). Net effect: filtering costs $1,500-$2,900/yr
+   in missed opportunities. Not recommended.
+
+## 2026-04-23 — STRATEGY1_SPEC.md created
+
+Living Strategy 1 rule specification. Consolidates bilateral
+sim + follow-up findings. Recommended config: Policy A, (0.20,
+0.35) thresholds, T5 stranded exit, single entry, no filter.
+Annual EV +$4,000-$5,600/yr (conservative to upper bound).
+
+## 2026-04-23 — S1 bilateral KILLED (corrected analysis)
+
+New script `analysis/strategy1_swing_corrected.py`. Replaced
+the flawed bilateral simulation with a single coherent state
+machine per config. 62 exit strategy configs tested (profit
+targets, fixed stops, trailing stops, time limits, and
+combinations) on 404 games with entry at ≤$0.35.
+
+**Result: 0 of 62 configs produced positive EV.** Best was
+trailing stop -$0.08 at -$103/yr. Hold-to-resolution baseline
+-$3,562/yr. The prior +$5,603/yr combined mutually exclusive
+outcomes (T5 5-min exits AND 35+ min bilateral completions)
+in the same P&L — a simulation design error.
+
+Key insight: selling the underdog at $0.65 produces identical
+gross to a bilateral ($0.20 + $0.35 = $0.55 cost vs $0.20
+entry + $0.65 sell = $0.45 gross). The bilateral framing was
+a theoretical distraction. The corrected swing-trade framing
+confirmed no tradeable edge exists on the underdog side.
+
+STRATEGY1_SPEC.md rewritten as kill record. Alpha stack
+reduced to S4A + S3.
+
+## 2026-04-23 — S4B underdog hybrid KILLED (revalidation)
+
+New script `analysis/strategy4b_revalidation.py`. Full S4B
+config sweep (1,323 configs: momentum + static × hybrid ×
+stop variants) on 404 games. Prior result +$1,105/yr on 168
+games collapsed to +$148/yr. Only 14 configs positive (1.1%).
+Best config earned $0.19/entry — effectively zero.
+
+The resolution-lottery mechanic that drove the prior result
+(12.6% underdog win rate on held portion) was abandoned by
+the optimizer on the larger dataset — best config uses pure
+swing with $0.05 stop, zero positions held to resolution.
+
+S4B is related to S1: a stranded S1 bilateral leg IS an
+underdog swing trade. Both strategies fail for the same
+reason — the underdog base rate is too low for any exit
+strategy to overcome.
+
+STRATEGY4_SPEC.md §8 (S4B section) should be updated to
+reflect kill status in a future prompt.

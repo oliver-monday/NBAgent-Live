@@ -2239,3 +2239,364 @@ before Phase 4a can operate.
 **Caveat:** the signal is data-limited (n=51 entries produced this
 result). Confidence interval on mean is wide. Live paper-trading
 in Phase 4a is the next validation step.
+
+## 2026-04-22 — S4A spread expansion: all 7 buckets positive EV (404-game dataset)
+
+Extended the S4A dip-recovery analysis from the 171-game core
+dataset (|spread| ≤ 6) to the full 404-game Kalshi paired dataset
+(all spreads). Part 8 Path B of the dip-recovery analysis. See
+`docs/analysis_outputs/strategy4_spread_expansion_kalshi.md`.
+
+| |Spread| | Games | Entries | Hit % | Mean P&L | Annual EV |
+|----------|-------|---------|-------|----------|-----------|
+| 1.0–2.0 | 36 | 29 | 51.7% | +$1.59 | +$702 |
+| 2.5–3.5 | 69 | 71 | 47.9% | +$2.57 | +$1,446 |
+| 4.0–5.0 | 31 | 29 | 48.3% | +$2.65 | +$1,357 |
+| 5.5–6.0 | 35 | 37 | 64.9% | +$6.17 | +$3,570 |
+| 6.5–8.0 | 46 | 43 | 58.1% | +$4.14 | +$2,116 |
+| 8.5–10.0 | 38 | 36 | 58.3% | +$0.82 | +$425 |
+| 10.5+ | 149 | 66 | 69.7% | +$4.55 | +$1,103 |
+
+**All 7 buckets are positive EV.** Wider spreads produce higher
+hit rates (69.7% at 10.5+ vs 47.9% at 2.5–3.5) but fewer
+entries per game. The 5.5–6.0 bucket is the standout (+$6.17
+mean P&L, 64.9% hit). Expansion buckets (|spread| > 6) have
+36–66 entries each — directionally robust, exact dollar figures
+noisy at these sample sizes.
+
+Core (|spread| ≤ 6): +$7,075/yr. Expansion (|spread| > 6):
++$3,644/yr. **Uncapped total: +$10,718/yr** (bucket-level
+extrapolation, not pooled replay). Engine already operates
+without spread filter — no code change needed.
+
+STRATEGY4_SPEC.md §2 updated: competitive game filter → uncapped.
+§7 updated with all 7 buckets. §9 updated with expansion EV.
+
+## 2026-04-22 — Bucket 5.5–6.0 investigation (inconclusive)
+
+The 5.5–6.0 bucket's +$6.17 mean P&L (64.9% hit) was the
+standout — nearly double the next-best per-entry mean.
+Investigated whether this is structural or small-sample noise.
+See `docs/analysis_outputs/strategy4_bucket_5_5_investigation.md`.
+
+- Leave-one-out: mean ranges $5.32–$7.55 (never negative).
+  No single game drives the result.
+- Bootstrap 95% CI: −$2.90 to +$14.73.
+- P(mean > 0): 91.1%.
+- 28 distinct games contributing entries.
+
+**Verdict: inconclusive.** Positive and stable, but confidence
+interval includes zero. Cannot confirm structural sweet spot
+vs favorable noise at n=37. No special treatment warranted.
+Monitor as forward collection cron accumulates more data.
+
+## 2026-04-22 — Stop execution reality (132 stop events, 404 games)
+
+Analyzed what actually happens when S4A's $0.40 stop fires on
+real Kalshi VWAP data. 132 stop events across 404 games. See
+`docs/analysis_outputs/strategy4_stop_execution.md`.
+
+| Category | Definition | % of stops |
+|----------|-----------|-----------|
+| Clean cross | VWAP $0.38–$0.42 | 50.0% |
+| Moderate gap | VWAP $0.34–$0.38 | 32.6% |
+| Severe gap | VWAP < $0.34 | 17.4% |
+
+73.5% of stops are flash crashes (price above $0.45 just 60
+seconds before the stop fires). Median dwell time at the
+$0.38–$0.42 band is 0 bins — price typically blows through
+$0.40 rather than lingering.
+
+**Break-even stop price: $0.312.** Strategy stays positive
+even under worst-case taker execution. Four execution
+scenarios analyzed:
+
+| Scenario | Annual EV | Δ vs baseline |
+|----------|-----------|--------------|
+| A — Baseline (stops at $0.40, maker) | +$1,410 | — |
+| B — Maker NO-side resting + taker fallback | +$1,460 | +$49 |
+| C — Taker stop at observed VWAP (worst case) | +$977 | −$433 |
+| D — Hybrid (resting + 60s cancel fallback) | +$1,131 | −$279 |
+
+**Recommended execution model: Scenario B.** Resting NO buy at
+$0.60 placed at entry time; taker fallback if price gaps to
+≤ $0.34 and resting order unfilled. Documented in
+PHASE4A_DESIGN.md Decision 6.
+
+## 2026-04-22 — Stop params sweep (retracted)
+
+40-cell grid sweep: NO bid $0.58–$0.65 × taker fallback
+$0.30–$0.38. Optimal cell: $0.58/$0.30 at +$2,252/yr. See
+`docs/analysis_outputs/strategy4_stop_params.md`.
+
+**RETRACTED.** Methodology only repriced existing stop events
+at different fill prices — it was blind to entries that would
+have been converted from stops to winners under different stop
+levels (i.e., a wider stop catches positions that would have
+recovered). The finding was superseded by the full sensitivity
+sweep below.
+
+## 2026-04-22 — $0.40 stop confirmed robust (full sensitivity sweep)
+
+Full re-simulation at 11 stop levels ($0.35–$0.45) across all
+404 games. Unlike the retracted params sweep, this replays the
+entire entry/exit/stop logic at each level, correctly counting
+converted winners. See
+`docs/analysis_outputs/strategy4_stop_sensitivity.md`.
+
+| Stop level | Entries | Hit % | Annual EV | Δ vs $0.40 |
+|-----------|---------|-------|-----------|-----------|
+| $0.35 | 311 | 57.9% | +$2,113 | +$227 |
+| $0.38 | 311 | 54.0% | +$1,937 | +$51 |
+| $0.40 | 311 | 52.4% | +$1,886 | — |
+| $0.42 | 305 | 50.8% | +$1,871 | −$15 |
+| $0.45 | 288 | 47.2% | +$1,039 | −$847 |
+
+$0.35 appears best in the pooled data (+$227/yr over $0.40)
+but the curve is bimodal and 5 of 7 spread buckets disagree
+with the pooled optimum. $0.42 was refuted: 6 entries that
+would have hit $0.90 are instead stopped, costing -$15/yr net.
+
+**Conclusion: $0.40 confirmed robust.** All 11 levels are
+positive EV. No parameter change warranted. The pooled $0.35
+advantage is consistent with noise, not structure.
+
+STRATEGY4_SPEC.md §10 #3 upgraded from PARTIALLY RESOLVED
+to RESOLVED.
+
+## 2026-04-23 — S1 bilateral operational simulation (404 games)
+
+First simulation of Strategy 1 bilateral position construction
+using realistic live-engine entry policies on the full 404-game
+Kalshi paired dataset. See
+`docs/analysis_outputs/strategy1_bilateral_sim.md`.
+
+Three entry policies × 14 asymmetric threshold pairs. Stranded-
+leg outcomes under 8 exit strategies (hold-to-resolution,
+time-based abandonment at 5/10/15/20/30 min, price-based stops
+at $0.10/$0.15/$0.20).
+
+**Recommended operating point:** Policy A (any observation
+≤ threshold, including opening tick), thresholds X=$0.20
+(leg 2, tight), Y=$0.35 (leg 1, wide), T5 stranded exit.
+
+| Component | Count | Total P&L | Per-unit |
+|-----------|-------|-----------|----------|
+| Completed bilaterals | 90 | +$4,817 | +$53.52 |
+| Stranded T5 exits | 314 | −$681 | −$2.17 |
+| **Net (404 games)** | | **+$4,136** | **+$10.24/game** |
+
+Annual EV: **+$5,603/yr** (upper bound — `dog_vwap = 1 - fav_vwap`
+approximation inflates bilateral cost slightly; real EV est.
+10–20% lower → conservative range +$4,000–$4,500/yr).
+
+### Key structural findings
+
+1. **100% of completed bilaterals are "collapse bilaterals."**
+   Leg 1 side's bid is ≥ $0.70 when leg 2 fills. Zero natural
+   bilaterals (game still in doubt at leg 2 time). Every leg 2
+   buy is insurance during the other side's collapse. Mean
+   insurance value: +$4.36. 21% of cases saved (leg 1 side
+   actually lost).
+
+2. **Policy A (most aggressive) beats Policy B (downward
+   crossing only).** Policy B has higher completion rate (32.8%
+   vs 22.3%) but enters 37% fewer games, netting $4,780/yr vs
+   $5,603/yr. Stranded-leg losses are so small with T5 that
+   marginal entries from aggressive policy are net positive.
+
+3. **All 7 spread buckets positive.** Core (|spread| ≤ 6):
+   $14–18/game. 10.5+: $4.90/game (low bilateral completion
+   rate but still net positive after T5 exits).
+
+Prior estimate from `strategy1_recalibrated_bilateral.md` was
++$1,608/yr based on ESPN-calibrated rates with perfect bilateral
+capture and no stranded-leg modeling. The simulation's +$5,603
+reflects the reality that entering every game (not just bilateral
+candidates) and exiting stranded legs quickly produces better
+aggregate EV.
+
+**Supersedes** the prior $1,608/yr estimate. Living spec:
+`docs/STRATEGY1_SPEC.md`.
+
+## 2026-04-23 — S1 bilateral follow-up: re-entry, T5 distribution, blowout filter
+
+Three targeted investigations on the recommended S1 operating
+point. See
+`docs/analysis_outputs/strategy1_bilateral_followup.md`.
+
+### Re-entry is structurally broken
+
+Bilateral completion requires minimum 71 ticks (35.5 min)
+between legs; median 209 ticks (104.5 min). T5 exits at 10
+ticks (5 min). Re-entry therefore produces **zero bilateral
+completions** — every additional entry is pure T5 churn.
+
+Six configs tested (cooldown {1, 10} × loss_cap {none, $10,
+$20}). All negative EV (−$2,595 to −$2,871/yr). Worst single-
+game outcome under uncapped re-entry: −$33.49 (3 cascading
+T5 exits during sustained collapse).
+
+T5 and re-entry are fundamentally incompatible: T5 optimizes
+stranded-leg losses by exiting before bilateral can complete,
+and re-entry re-enters games where bilateral already failed
+to form.
+
+### T5 exit distribution is wider than the mean suggests
+
+314 stranded T5 exits: 32% profitable (mean +$2.88), 68%
+losses (mean −$4.53). Aggregate mean −$2.17.
+
+By entry price: $0.10–$0.15 is sweetspot (53% profitable,
+mean −$0.27). $0.30–$0.35 is worst (26% profitable, mean
+−$3.04). Limited downside at very low prices produces better
+T5 dynamics.
+
+Percentiles: P10 = −$8.62, P25 = −$4.70, median = −$1.86,
+P75 = +$0.69, P90 = +$3.39.
+
+### Blowout filter helps per-game but costs total volume
+
+Three filters (skip games where either side opens ≥ cutoff):
+
+| Filter | Games | EV/game | Excluded EV/game |
+|--------|-------|---------|------------------|
+| None | 404 | $10.24 | — |
+| ≥ $0.80 | 257 | $13.12 | excluded = +$5.20 |
+| ≥ $0.75 | 218 | $13.80 | excluded = +$6.06 |
+| ≥ $0.70 | 183 | $14.85 | excluded = +$6.42 |
+
+Excluded games are themselves positive EV — the filter
+cuts profitable entries along with unprofitable ones.
+Corrected annual EV (proportional scaling) shows filtering
+costs $1,500–$2,900/yr in missed opportunities. **Not
+recommended** for the engine. Engine should enter all games.
+
+## 2026-04-23 — S1 corrected analysis: KILL (0/62 configs positive)
+
+The prior bilateral simulation (`strategy1_bilateral_sim.md`)
+contained a fundamental design error: it combined T5 exits
+(sell after 5 min) with bilateral completions (require 35+ min
+hold) in the same P&L. A live engine cannot know at minute 5
+which entries will complete bilaterally. The +$5,603/yr was
+not operationally achievable.
+
+Corrected analysis (`strategy1_swing_corrected.md`) replaced
+the bilateral framing with coherent state-machine configs.
+Key equivalence: selling at $0.65 = buying both sides at
+$0.20 + $0.35. Swing trade captures identical economics.
+
+62 configs tested (profit targets, stops, trailing stops,
+time limits, combinations). **Zero positive EV.** Best:
+trailing stop -$0.08 at -$103/yr. Hold-to-resolution:
+-$3,562/yr.
+
+Price trajectory characterization: 22% of games see underdog
+peak > $0.80 (huge winners), 20% never reach $0.20 (collapse
+from entry). Median time to $0.65: 172 ticks (86 min). Max
+drawdown before peak for games reaching $0.50+: mean $0.08-
+$0.11. The 22% of games that produce large underdog rallies
+cannot compensate for the 78% that don't.
+
+**S1 bilateral is killed.** The underdog side of Kalshi NBA
+markets does not contain tradeable edge at any tested price
+level or exit strategy. Alpha stack reduced to S4A + S3.
+
+## 2026-04-23 — S4B underdog hybrid: KILL (revalidated +$148/yr)
+
+Revalidated S4B on 404 games (prior: +$1,105/yr on 168 games).
+1,323 configs tested. Best: momentum $0.10-$0.35, run $0.03,
+lookback 180s, +$0.15 swing, stop $0.05 → +$148/yr ($0.19
+per entry). 14 of 1,323 configs positive (1.1%).
+
+Spread buckets: 3 of 7 negative EV. 8.5-10.0 bucket alone
+provides +$1,839 of +$148 total — one bucket doing all the
+work is noise. Resolution-lottery hybrid abandoned by
+optimizer (best config is pure swing, zero hold-to-resolution).
+
+S1 overlap analysis: 29% of S4B entries overlap with S1 leg 1.
+S4B's exit rule beats S1's T5 by $2.83/entry on overlapping
+trades, but this is moot — S1 itself is killed.
+
+**S4B is killed.** Consistent with S1 kill — both fail because
+the underdog base rate (~12-18% win probability) cannot be
+overcome by exit-side mechanics.
+
+## 2026-04-23 — Team-level S4A profiles: Kalshi 404-game dataset (playoff 16)
+
+New script `analysis/team_profiles_playoff16.py`. Observational
+profiling of the 16 playoff teams across the 404-game Kalshi
+paired dataset. Per-team volatility, swing count, $0.50 crossover
+rate, S4A hit rate, collapse rate, underdog upset rate. Split by
+role × venue × spread bucket × opponent quality × period.
+
+### S4A hit rate dispersion (Kalshi)
+
+Wide dispersion observed: NYK 78.6% (n=14) to HOU 30.4% (n=23).
+9 teams in Tier 1 (≥60%), 4 in Tier 2 (45-59%), 3 in Tier 3
+(<45%). HOU was the only team with 95% CI entirely below pooled
+52.4% — appeared to be a statistically significant avoid.
+
+Tier 1 aggregate: 130 entries, 66.9% hit, +$7.73 mean P&L.
+Tier 3 aggregate (HOU/LAL/TOR): 41 entries, ~34% hit, negative
+mean P&L. If-we-filtered: Tier 1 only at +$3,141/yr vs
+all-16-teams at +$1,661/yr.
+
+### Other notable findings
+
+- ATL: lowest collapse rate as favorite (11.8%, Z=-1.91).
+- DEN: most volatile favorite (8.5 swings/game, Z=+2.04).
+- PHX: extreme home/away split (40% home-fav hit vs 83% away).
+- HOU Q4 as favorite: 0% S4A hit rate on 5 entries.
+- Period pattern: Q3 entries showed highest hit rates across
+  multiple teams, consistent with STRATEGY4_SPEC.md §7.
+
+**Status: provisional — pending ESPN validation.** Individual
+team CIs are wide (±15-20pp). Only HOU clears significance.
+Team rankings may be noise at n=9-23 per team.
+
+## 2026-04-23 — Team-level S4A profiles: ESPN full season — NOT VALIDATED
+
+New script `analysis/team_profiles_espn_full.py`. Extended team
+profiling to the full 1,234-game ESPN WP dataset (all 30 teams).
+Applied the same S4A signal parameters to ESPN WP values.
+Primary goal: validate Kalshi team-level hit rate dispersion at
+3× sample size via Spearman rank-order correlation.
+
+### Validation result
+
+**Spearman ρ = −0.106, p = 0.69. Verdict: NOT VALIDATED.**
+
+Team rankings between Kalshi and ESPN are statistically
+indistinguishable from random. Only 3 of 16 playoff teams
+matched tiers across datasets (DET, LAL, PHX).
+
+### Key reversals
+
+| Team | Kalshi rank | ESPN rank | Shift |
+|------|-----------|---------|-------|
+| NYK | 1 (78.6%) | 16 (32.8%) | −15 |
+| ATL | 2 (75.0%) | 14 (38.1%) | −12 |
+| HOU | 16 (30.4%) | 7 (45.9%) | +9 |
+| TOR | 14 (44.4%) | 4 (53.3%) | +10 |
+
+HOU — the only "statistically significant avoid" on Kalshi —
+reverted to pooled average on ESPN (45.9% vs 44.2% pooled,
+CI spans pooled). The significance finding was noise.
+
+### Implication
+
+**Team identity is not a stable predictor of S4A hit rate.**
+The dispersion observed on the 404-game Kalshi dataset was
+driven by small per-team sample sizes (n=9-23), not by
+structural team-level tendencies. At 3× sample (n=24-62 per
+team on ESPN), the rankings scramble completely.
+
+**S4A's team-agnostic design is validated.** The engine should
+continue trading all games with the same parameters. No team
+filter, no team-specific params, no tier system. The pooled
+53% hit rate is genuinely a pooled phenomenon, not a bimodal
+distribution masked by aggregation.
+
+**The Tier 1 parameter sensitivity sweep planned as a follow-up
+is cancelled** — there is no stable Tier 1 to parameterize for.

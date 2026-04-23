@@ -13,14 +13,17 @@ competitive, |spread| ≤ 6). Three strategies validated,
 one killed. Full arc in `ROADMAP_resolved.md`.
 
 **Validated alpha stack (carries into Phase 4a):**
-- S1 bilateral: +$1,608/yr (confirmed)
+- ~~S1 bilateral: KILLED 2026-04-23~~ (corrected analysis:
+  0/62 configs positive EV. Prior $5,603/yr was simulation
+  design error.)
 - S4A dip-recovery: +$7,075/yr core |spread|≤6, +$10,718/yr
   uncapped (Kalshi-confirmed, 404-game expanded dataset,
   all 7 spread buckets positive EV)
 - S3 filtered: +$578–$825/yr (holdout-validated)
-- S4B underdog hybrid: +$1,105/yr (positive, needs more data)
-- Combined conservative (core): **+$9,261–$9,508/yr**
-- Combined full (with expansion): **+$12,904–$13,151/yr**
+- ~~S4B underdog hybrid: KILLED 2026-04-23~~ (revalidated at
+  +$148/yr on 404 games, 1.1% of 1,323 configs positive)
+- Combined conservative (S4A core+S3): **+$7,653–$7,900/yr**
+- Combined full (S4A all spreads+S3): **+$11,297–$11,544/yr**
   (expansion buckets have thin samples, 36–66 entries each)
 
 **Deprioritized (no longer load-bearing):**
@@ -48,6 +51,9 @@ bilateral, S4A dip-recovery, S3 filtered. See
   Status:
   unverified live (pending first paper-trading run).
   Design doc: `docs/PHASE4A_DESIGN.md`.
+- **Phase 4a S1 engine — CANCELLED.** S1 bilateral killed
+  2026-04-23. No engine module will be built. See
+  `docs/STRATEGY1_SPEC.md` (kill record).
 
 Rule-based trading bot. No LLM-in-the-loop, no live ML inference —
 the "intelligence" lives entirely in rules derived from Phase 3
