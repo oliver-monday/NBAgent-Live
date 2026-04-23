@@ -15,7 +15,8 @@ single actionable reference. Companion to `STRATEGY3_SPEC.md`.
 - **Tested-and-rejected** — analyzed and found not to improve
   the strategy.
 
-Last updated: 2026-04-22 (stop execution study incorporated).
+Last updated: 2026-04-23 (breakeven ratchet §5A added, engine
+replay-validated).
 
 ---
 
@@ -42,6 +43,7 @@ S3 bets against a potential collapse.
 | Entry zone | $0.50–$0.75 (fav Kalshi VWAP) | Kalshi-confirmed |
 | Exit target | $0.90 | Kalshi-confirmed, optimal per false-summit analysis |
 | Stop-loss | $0.40 | Kalshi-confirmed, most sensitive parameter |
+| Ratchet trigger | +$0.08 from entry price | Kalshi-confirmed; see §5A |
 | Contract sizing | 100 contracts per position | Single tranche, no averaging |
 | Position management | None (baseline optimal) | Tested-and-rejected: 17 avg-in/out configs all underperform |
 | Re-entry | Allowed once per game after exit | 25.5% of entries are re-entries |
@@ -203,6 +205,80 @@ $1,569/yr vs $1,886 baseline.
 **Optimal execution:** Single limit buy, single limit sell at
 $0.90, stop at $0.40. No ladder, no tranches.
 
+**See §5A for the breakeven ratchet**, which supersedes the
+"baseline optimal" conclusion for stop management. The tranche
+and avg-in/out findings above still stand — the ratchet is a
+stop-management overlay, not a position-sizing change.
+
+---
+
+## 5A. Breakeven ratchet: VALIDATED (2026-04-23)
+
+Once the favorite's price rises ≥ $0.08 above the entry price,
+the stop-loss moves from $0.40 to entry_price + $0.01. The
+position is then either stopped at a small scratch profit or
+exited at the $0.90 target. No other logic changes (entry zone,
+dip trigger, target, re-entry, sizing all identical).
+
+### Mechanism
+
+- Track `highest_since_entry` from entry bin forward.
+- When `highest_since_entry − entry_price ≥ $0.08`, set
+  `effective_stop = entry_price + $0.01` (one-way latch).
+- Exit at market when `current_price ≤ effective_stop`.
+- Ratchet-triggered stops fill as maker (resting limit at
+  the ratcheted level); $0.40 full stops still fill as
+  taker (flash-crash crossings).
+
+### Impact on the 404-game dataset
+
+| Metric | No ratchet | With ratchet +$0.08 | Δ |
+|--------|-----------|---------------------|---|
+| Entries | 311 | 358 | +47 |
+| Target exits ($0.90) | 179 | 149 | −30 |
+| Full stops ($0.40) | 132 | 88 | −44 |
+| Ratchet scratches | — | 121 | +121 |
+| Hit rate (%) | 57.6% | 41.6% | −16.0 |
+| Mean P&L / entry | +$3.13 | +$3.92 | +$0.79 |
+| Annual EV (pool) | +$1,320 | +$1,899 | +$579 |
+
+Hit rate drops because the ratchet converts 44 full stops into
+121 small scratches and re-opens 47 new entries (the
+early-scratch frees the game up for another dip). Mean P&L per
+entry still rises — the ratchet trades deep losers for
+near-breakeven exits.
+
+Note: figures use target-level fills ($0.90 exactly) and the
+maker/taker fee split (maker on entry + target + ratchet_stop,
+taker on full_stop). The drawdown analysis's $+2.83 baseline
+used the observed overshoot price on target fills; see
+`engine/replay.py` docstring for reconciliation.
+
+### Holdout
+
+6/6 seeds positive (42–47, 270/134 train/test). Train/test
+means track within $0.25/entry on every seed. Consistent with
+S4A's no-fit character — the ratchet is a mechanical overlay.
+
+### Ratchet trigger sensitivity
+
++$0.05 through +$0.20 triggers all positive. +$0.08 is optimal
+on pooled EV; the curve is shallow (±$50/yr across the $0.06–
+$0.12 range).
+
+### What doesn't change
+
+- Entry zone, dip depth, trailing max, target, full stop,
+  sizing, re-entry rule — all unchanged.
+- $0.40 full stop is still required. The ratchet activates
+  only on winners that touched +$0.08; stop-before-ratchet
+  losers still hit $0.40.
+
+**Source:** `docs/analysis_outputs/s3_reframed_extended_entry.md`
+Part 12. Replay-validated in `engine/replay.py` (`--ratchet
+0.08`): 358 entries, 149 target, 88 full stops, 121 ratchet
+stops, hit 41.6%, mean +$3.92, annual +$1,899.
+
 ---
 
 ## 6. Prior-weighting analysis: RESOLVED (not useful as filter)
@@ -306,7 +382,8 @@ At 100-contract sizing, maker-maker:
 |----------|-------|---------|-----------|----------|
 | |spread| ≤ 6 (core) | 171 | 166 | +$7,075 | Kalshi-confirmed, replay-validated |
 | |spread| > 6 (expansion) | 233 | 145 | +$3,644 | Kalshi-confirmed, thin buckets |
-| **All spreads** | **404** | **311** | **+$10,718** | **Bucket-level extrapolation** |
+| **All spreads (no ratchet)** | **404** | **311** | **+$10,718** | **Bucket-level extrapolation** |
+| **All spreads (ratchet +$0.08)** | **404** | **358** | **+$1,899*** | **Pool-level, replay-validated** |
 
 **Caveat:** the +$10,718 figure is the sum of per-bucket
 annualized EV extrapolations, not a single pooled replay.
@@ -315,6 +392,18 @@ finding (all buckets positive) is robust; the exact annual
 dollar figure carries meaningful uncertainty. The core
 |spread| ≤ 6 universe at +$7,075 is the most conservative
 anchor.
+
+*The $1,899 ratcheted figure is pool-level annualization on
+the full 404-game dataset (entries/games × 547), not per-
+bucket summed. Per-entry EV improves from $3.13 → $3.92
+(+$0.79) across the same pool; the lower headline number
+vs the +$10,718 no-ratchet all-spreads extrapolation reflects
+the difference in annualization method (pool vs per-bucket-
+summed), not a strategy regression. Applying the +$0.79/entry
+ratchet uplift to the $10,718 per-bucket extrapolation would
+imply ~$11,000+/yr for the ratcheted all-spreads universe,
+but that calculation hasn't been per-bucket replay-validated
+yet.
 
 ### Combined alpha stack
 

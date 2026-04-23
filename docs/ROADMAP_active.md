@@ -51,6 +51,21 @@ bilateral, S4A dip-recovery, S3 filtered. See
   Status:
   unverified live (pending first paper-trading run).
   Design doc: `docs/PHASE4A_DESIGN.md`.
+- **Phase 4a S4A ratchet — IMPLEMENTED (2026-04-23).**
+  Breakeven ratchet stop added to engine. `PositionManager`
+  extended with per-position `highest_since_entry`,
+  `ratchet_triggered`, `effective_stop` state and maker/
+  taker fee split (maker on entry/target/ratchet_stop,
+  taker on full_stop). Target fills at $0.90 exactly.
+  `--ratchet 0.08` CLI flag on both `engine/replay.py` and
+  `engine/live_runner.py`; default is 0.08 (set to 0 to
+  disable). Replay-validated at both modes:
+  `--ratchet 0.08` → 358/149/88/121, hit 41.6%, mean
+  $+3.92, annual $+1,899 (PASS vs Part 12);
+  `--ratchet 0` → 311/179/132/0, hit 57.6%, mean $+3.13,
+  annual $+1,320. Spec: `docs/STRATEGY4_SPEC.md` §5A.
+  Status: unverified live (pending paper-trading session
+  at `--ratchet 0.08`).
 - **Phase 4a S1 engine — CANCELLED.** S1 bilateral killed
   2026-04-23. No engine module will be built. See
   `docs/STRATEGY1_SPEC.md` (kill record).

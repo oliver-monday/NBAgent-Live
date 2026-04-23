@@ -1,5 +1,60 @@
 # Resolved Roadmap
 
+## 2026-04-23 — S4A engine ratchet implementation
+
+Breakeven ratchet stop wired into the Phase 4a paper-trading
+engine, replay-validated on the 404-game Kalshi pool.
+
+- `engine/position_manager.py`: added `highest_since_entry`,
+  `ratchet_triggered`, `effective_stop` per-position state;
+  `_update_ratchet` helper; maker/taker fee split (maker on
+  entry + target + ratchet_stop, taker on full_stop);
+  `target_exit = 0.90` so target fills at the level exactly
+  (not observed overshoot); `close_ratchet_stop` action type;
+  `ratchet_events()` + `summary()` ratchet counts.
+- `engine/live_runner.py`: `--ratchet 0.08` CLI flag,
+  threaded into `PositionManager` construction; journal
+  includes `ratchet_triggered` + `exit_type: ratchet_stop`
+  fields.
+- `engine/replay.py`: rewritten against the 404-game
+  `load_kalshi_games_all_spreads` pool. `--ratchet` flag
+  (default 0.08). `EXPECTED` targets for both modes with
+  ±1 count / ±$0.02 mean / ±$10 annual tolerances.
+  Reconciliation note on target-level vs observed-price
+  fill models in module docstring.
+- Validation (both modes PASS):
+  - `--ratchet 0.08` → 358 entries, 149 target, 88 full
+    stops, 121 ratchet stops, hit 41.62%, mean $+3.9153,
+    annual $+1,898.59 (vs expected $+1,899; matches Part
+    12 trade-for-trade).
+  - `--ratchet 0` → 311 entries, 179 target, 132 full
+    stops, 0 ratchet stops, hit 57.56%, mean $+3.1336,
+    annual $+1,320.04.
+- Docs: `docs/STRATEGY4_SPEC.md` §5A added, §2 ratchet row,
+  §5 cross-ref, §9 ratcheted EV row; `docs/RESEARCH_LOG.md`
+  2026-04-23 entry.
+
+## 2026-04-23 — S3 reframed analysis (3 passes, Parts 1–15)
+
+Three-pass investigation reframing S3 as the $0.40–$0.50 tail
+of the S4A favorite-recovery curve. Output:
+`docs/analysis_outputs/s3_reframed_extended_entry.md`
+(Parts 1–15).
+
+- **Pass 1 (Parts 1–6):** extend entry band down to $0.40.
+  $0.45–$0.50 adds clean incremental EV; $0.40–$0.45 is
+  volume without alpha.
+- **Pass 2 (Parts 7–11):** 12 variants tested (dip depth,
+  trailing window, re-entry rules, spread sub-buckets).
+  None beats baseline; ridge is robust.
+- **Pass 3 (Parts 12–15):** breakeven ratchet stop. At
+  trigger +$0.08, converts 44 full stops into 121 small
+  scratches, adds 47 new entries; mean P&L $+3.13 → $+3.92
+  per entry, annual EV $+1,320 → $+1,899 (pool, 404
+  games). Holdout 6/6 seeds positive.
+- Ratchet implementation landed in the paper-trading engine
+  same day (see entry above).
+
 ## 2026-04-21 — Infrastructure: Forward-collection cron + logger schedule deprecation
 
 Addresses the ~60-day Kalshi trade-tape retention cliff by

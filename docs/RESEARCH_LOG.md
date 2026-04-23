@@ -1,5 +1,60 @@
 # NBAgent-Live — Research Log
 
+## 2026-04-23 — S3 reframed as extended S4A entry range + breakeven ratchet validated
+
+Three-pass investigation in `docs/analysis_outputs/s3_reframed_extended_entry.md`
+(Parts 1–15). Reframed S3 not as "buy at $0.40 and hope" but
+as the $0.40–$0.50 tail of the S4A favorite-recovery curve.
+
+**Pass 1 (Parts 1–6):** extending the S4A entry band from
+$0.50–$0.75 down to $0.40–$0.75 adds ~$500/yr on pooled EV
+but the $0.40–$0.50 sub-band is marginal alone. $0.45–$0.50
+is a clean incremental; $0.40–$0.45 adds volume without
+alpha.
+
+**Pass 2 (Parts 7–11):** tested 12 variants (dip depth,
+trailing window, re-entry suppression, spread sub-buckets).
+No variant beats the baseline $0.08 / 180s / same re-entry
+rule. Robust parameter ridge confirmed.
+
+**Pass 3 (Parts 12–15):** breakeven ratchet stop. Once the
+favorite rises ≥ $0.08 above entry price, move the stop to
+entry + $0.01. On the 404-game pool:
+
+| Metric | No ratchet | Ratchet +$0.08 | Δ |
+|--------|-----------|----------------|---|
+| Entries | 311 | 358 | +47 |
+| Target | 179 | 149 | −30 |
+| Full stops | 132 | 88 | −44 |
+| Ratchet scratches | — | 121 | +121 |
+| Hit rate | 57.6% | 41.6% | −16.0 |
+| Mean P&L | +$3.13 | +$3.92 | +$0.79 |
+| Annual EV (pool) | +$1,320 | +$1,899 | +$579 |
+
+Holdout: 6/6 seeds positive (42–47, 270/134 train/test).
+Trigger sensitivity: +$0.05 through +$0.20 all positive;
++$0.08 optimal, curve shallow.
+
+**Engine implementation:** `engine/position_manager.py`
+extended with Position-level ratchet state, maker/taker fee
+split (maker on entry/target/ratchet_stop, taker on
+full_stop), target-level fills ($0.90 exactly). `engine/
+replay.py` validates both modes PASS against expected
+numbers:
+- `--ratchet 0.08`: 358/149/88/121, hit 41.62%,
+  mean $+3.9153, annual $+1,898.59 (vs expected $+1,899).
+- `--ratchet 0`: 311/179/132/0, hit 57.56%, mean $+3.1336,
+  annual $+1,320.04.
+
+Baseline differs from the drawdown analysis's $+2.83/$+1,193
+because the engine uses target-level fills ($0.90 exactly)
+on target exits, not observed overshoot price — a more
+realistic model for resting limit orders. Reconciliation
+documented in `engine/replay.py` module docstring.
+
+Spec updated: `docs/STRATEGY4_SPEC.md` §2 (ratchet row),
+§5 note, new §5A, §9 annual EV table, "last updated" stamp.
+
 ## 2026-04-22 — Strategy 4 spread expansion Path B (Kalshi-confirmed)
 
 Re-ran Part 8 on the Kalshi trade-tape data from the

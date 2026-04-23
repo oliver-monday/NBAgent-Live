@@ -60,10 +60,15 @@ until research produces a validated strategy spec.** Progress:
      - **Strategy 4 confirmed:** Dip-recovery swing trading.
        +$7,075/yr core (|spread| ≤ 6), +$10,718/yr uncapped
        (all 7 spread buckets positive EV on 404-game Kalshi
-       dataset). Spec: `docs/STRATEGY4_SPEC.md`. Position
-       management tested (baseline optimal). Prior-weighting
-       tested (not useful). S4B underdog hybrid +$1,105/yr,
-       needs more data.
+       dataset). **Breakeven ratchet stop added 2026-04-23:**
+       stop moves from $0.40 to entry+$0.01 once price rises
+       ≥ $0.08 above entry. +$0.79/entry uplift, +$579/yr
+       pool-level on the 404-game set (engine replay-
+       validated, both modes PASS). Spec:
+       `docs/STRATEGY4_SPEC.md` (§5A). Position management
+       tested (baseline optimal, ratchet is stop-management
+       overlay). Prior-weighting tested (not useful). S4B
+       underdog hybrid +$1,105/yr, needs more data.
      - **Phase 4a unlocked.** Two validated alpha sources
        (S4A +$7,075 core / +$10,718 uncapped,
        S3-filtered +$578–$825), combined
@@ -247,7 +252,9 @@ memory as starting from the first session's context.
   strategy by annual EV (+$7,075/yr core, +$10,718/yr
   uncapped across all spreads). Includes false-summit exit
   analysis, spread expansion by bucket, prior-weighting
-  results, position management conclusions.
+  results, position management conclusions. **§5A
+  (2026-04-23): breakeven ratchet stop, engine replay-
+  validated, +$579/yr pool-level on 404 games.**
 - `docs/STRATEGY1_SPEC.md` — **Strategy 1 kill record.**
   Bilateral convergence / underdog swing trade: killed
   2026-04-23. Zero positive-EV configs on 404-game dataset.
