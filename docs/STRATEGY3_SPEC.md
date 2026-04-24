@@ -1,19 +1,36 @@
-# Strategy 3 Spec — Swing Trading on Kalshi NBA Contracts
+# Strategy 3 — KILLED (2026-04-23)
 
-Living document. Phase 3's primary deliverable. Captures the
-current best-guess rule set for Strategy 3, with each element
-tagged by evidence source and confidence level.
+## Kill summary
 
-**Evidence tiers:**
-- **Kalshi-confirmed** — validated on real Kalshi trade data.
-  As of 2026-04-20: 168 games paired (ESPN WP + Kalshi trades),
-  165 competitive (|spread| ≤ 6).
-- **ESPN-scale** — supported by 1,234-game ESPN WP analysis;
-  directional patterns expected to transfer. Compression
-  calibration now quantified: Kalshi = ESPN + delta, where
-  delta varies by WP zone (see §1A below).
-- **Hypothesized** — theoretically motivated, not yet tested
-  at any scale
+Strategy 3 (filtered favorite-side entry at $0.40 with
+resolution hold) was killed after the S3 reframed analysis
+showed the entry zone is subsumed by S4A's extended range,
+the filters were noise-fitted on 168 games, and the
+resolution-hold exit is dominated by S4A-style $0.90 swing
+exits at every entry price tested.
+
+**Key findings (404-game dataset, 3-pass analysis):**
+- S3 filters (WP momentum + fav + Q1/Q2) lost value at
+  scale: unfiltered +$382/yr > filtered +$259/yr.
+- Extended entry ($0.40–$0.45) with S4A $0.90 exit:
+  +$561/yr standalone, holdout 5/6.
+- Breakeven ratchet on the extended entry: +$1,023/yr,
+  holdout 6/6.
+- But: ratchet on S4A standard entries ($0.50–$0.75)
+  captures more EV (+$1,899/yr) with zero new complexity.
+- Add-on tranche (S4A + second entry at $0.40–$0.45):
+  +$464/yr incremental, validated but deferred.
+- **No separate S3 engine module will be built.**
+
+Analysis: `docs/analysis_outputs/s3_reframed_extended_entry.md`
+(Parts 1–15).
+
+---
+
+## Historical spec (preserved for reference)
+
+_The content below is the original S3 spec as of 2026-04-21,
+preserved for audit trail. It is no longer an active strategy._
 
 Last updated: 2026-04-21.
 

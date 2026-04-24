@@ -12,19 +12,20 @@ Phase 3B formal analysis complete. 168 games paired (165
 competitive, |spread| ≤ 6). Three strategies validated,
 one killed. Full arc in `ROADMAP_resolved.md`.
 
-**Validated alpha stack (carries into Phase 4a):**
-- ~~S1 bilateral: KILLED 2026-04-23~~ (corrected analysis:
-  0/62 configs positive EV. Prior $5,603/yr was simulation
-  design error.)
-- S4A dip-recovery: +$7,075/yr core |spread|≤6, +$10,718/yr
-  uncapped (Kalshi-confirmed, 404-game expanded dataset,
-  all 7 spread buckets positive EV)
-- S3 filtered: +$578–$825/yr (holdout-validated)
-- ~~S4B underdog hybrid: KILLED 2026-04-23~~ (revalidated at
-  +$148/yr on 404 games, 1.1% of 1,323 configs positive)
-- Combined conservative (S4A core+S3): **+$7,653–$7,900/yr**
-- Combined full (S4A all spreads+S3): **+$11,297–$11,544/yr**
-  (expansion buckets have thin samples, 36–66 entries each)
+**Active alpha stack:**
+- S4A dip-recovery with ratchet: +$1,899/yr pooled (404-game
+  replay-validated, holdout 6/6, ratchet trigger +$0.08).
+  Pre-ratchet per-bucket: +$7,075/yr core |spread|≤6,
+  +$10,718/yr uncapped (all 7 spread buckets positive EV).
+- Add-on tranche (second entry $0.40–$0.45): +$464/yr
+  incremental, validated but **DEFERRED**.
+
+**Killed strategies:**
+- ~~S1 bilateral: KILLED 2026-04-23~~ (0/62 configs positive)
+- ~~S3 filtered: KILLED 2026-04-23~~ (subsumed by S4A
+  extended range; filters noise-fitted on 168 games)
+- ~~S4B underdog hybrid: KILLED 2026-04-23~~ (+$148/yr on 404
+  games, 1.1% of 1,323 configs positive)
 
 **Deprioritized (no longer load-bearing):**
 - §1.4 retirement analyses (answered by sportsbook backfill)
@@ -33,8 +34,8 @@ one killed. Full arc in `ROADMAP_resolved.md`.
 ## Phase 4 — Live decision engine
 
 **As of 2026-04-21: Phase 3B is complete, Phase 4a is unlocked.**
-Three validated strategies ready for paper-trading: S1
-bilateral, S4A dip-recovery, S3 filtered. See
+One validated strategy in paper-trading: S4A dip-recovery
+with breakeven ratchet. S1, S3, S4B killed. See
 `docs/KILL_CRITERIA_draft.md` §Project-level decisions.
 
 - **Phase 4a S4A engine — IMPLEMENTED (2026-04-22).**

@@ -13,9 +13,10 @@ does; implementation details live in the code.
   trading against live Kalshi market-data feeds. Signal detection,
   position management, tick-by-tick journaling, replay validation
   against the 168-game historical dataset.
-- **Out of scope:** S1 (bilateral), S3 filtered, real-money order
-  submission, alerting, dashboard. Those are separate builds
-  gated on paper-trading validation.
+- **Out of scope:** real-money order submission, alerting,
+  dashboard. S1 and S3 were killed 2026-04-23 — no engine
+  modules will be built for them. See `STRATEGY1_SPEC.md`
+  and `STRATEGY3_SPEC.md` (kill records).
 
 ---
 
@@ -245,9 +246,10 @@ P&L is net of maker fees on both legs.
   could a second dip in the same game support a fresh entry?
   Offline sweep treated re-entry as allowed (max 2 per game)
   but doesn't study concurrent-with-first-position re-entry.
-- **S1 + S3 layering.** When is it safe to run S4A, S1, and
-  S3-filtered simultaneously on the same game? Multi-strategy
-  capital allocation is not designed.
+- ~~**S1 + S3 layering.**~~ RESOLVED — S1 and S3 both killed
+  2026-04-23. Only S4A remains. The add-on tranche (second
+  entry at $0.40–$0.45 within S4A) is a position-management
+  extension, not a multi-strategy interaction.
 - **Playoff parameter sensitivity.** The 168-game dataset spans
   regular season + first-round playoffs. Later rounds may have
   different dynamics (fewer games, higher stakes, tighter

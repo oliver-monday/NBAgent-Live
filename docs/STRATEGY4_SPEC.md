@@ -28,10 +28,11 @@ win ($0.50–$0.75 zone). Exit when the favorite reasserts
 ($0.90), explicitly before game resolution. Avoids late-game
 collapse risk by never holding to the final whistle.
 
-Distinct from Strategy 3: S3 enters at $0.40 (market losing
-faith), S4 enters at $0.50–$0.75 (market still believes but
-temporarily disrupted). S4 rides the favorite's natural buoy;
-S3 bets against a potential collapse.
+Formerly distinct from Strategy 3, which entered at $0.40.
+S3 was killed 2026-04-23 — its entry zone is subsumed by
+S4A's extended range analysis, and its resolution-hold exit
+is dominated by S4A-style $0.90 exits. See
+`docs/STRATEGY3_SPEC.md` (kill record).
 
 ---
 
@@ -121,8 +122,8 @@ because too many recoveries stall in the $0.90–$0.94 range.
 **Exit at market if favorite price drops to $0.40.**
 
 This is the "market has genuinely lost faith" threshold. Below
-$0.40, the favorite is in S3 territory — a fundamentally
-different and riskier regime.
+$0.40, the favorite's recovery probability drops
+substantially — a fundamentally riskier regime.
 
 ### Stop-loss execution reality (from stop execution study)
 
@@ -405,21 +406,32 @@ imply ~$11,000+/yr for the ratcheted all-spreads universe,
 but that calculation hasn't been per-bucket replay-validated
 yet.
 
-### Combined alpha stack
+### Alpha stack (2026-04-23)
 
 | Strategy | Annual EV | Status |
 |----------|-----------|--------|
-| S4A dip-recovery (core, |spread| ≤ 6) | +$7,075 | Kalshi-confirmed |
-| S4A dip-recovery (expansion, |spread| > 6) | +$3,644 | Kalshi-confirmed, thin samples |
-| S3 filtered | +$578–$825 | Holdout-validated |
+| S4A with ratchet (pooled, 404 games) | +$1,899 | Replay-validated, holdout 6/6 |
+| S4A no-ratchet baseline (pooled) | +$1,320 | Replay-validated |
+| S4A per-bucket core (|spread| ≤ 6) | +$7,075 | Kalshi-confirmed (pre-ratchet) |
+| S4A per-bucket all spreads | +$10,718 | Kalshi-confirmed (pre-ratchet) |
+| S4A + add-on tranche (deferred) | +$2,079 | Validated, holdout 6/6, deferred |
+| ~~S3 filtered~~ | ~~+$578–$825~~ | KILLED 2026-04-23 |
 | ~~S1 bilateral~~ | ~~+$4,000–$5,600~~ | KILLED 2026-04-23 |
 | ~~S4B underdog hybrid~~ | ~~+$1,105~~ | KILLED 2026-04-23 |
-| **S4A (core) + S3** | **+$7,653–$7,900** | Conservative combined |
-| **S4A (all) + S3** | **+$11,297–$11,544** | Full combined |
 
-S1 and S4B both failed on the underdog side — no exit strategy
-overcomes the low base rate (~12–18% win probability). The
-remaining strategies operate exclusively on the favorite side.
+**Note on EV figures:** the pooled +$1,899 uses calendar-
+annualization on 404 games (358 entries ÷ 404 games × 547
+effective season games). The per-bucket figures (+$7,075,
++$10,718) sum bucket-level rates scaled to bucket-specific
+competitive fractions — a different method producing higher
+totals. Both are valid; the pooled number is more conservative
+for capital planning. Per-bucket ratcheted figures have not
+been computed yet.
+
+S4A is the only active strategy. S1, S3, and S4B are all
+killed. The add-on tranche (second entry at $0.40–$0.45,
++$464/yr incremental) is validated but deferred pending more
+data and paper-trading confirmation of the ratchet.
 
 ---
 
@@ -467,14 +479,14 @@ remaining strategies operate exclusively on the favorite side.
    dynamics (slower pace, tighter defense, more timeouts)
    may shift the parameters.
 
-5. **S4B validation.** The underdog hybrid is promising but
-   the 12.6% resolution-win rate on a held portion is a
-   thin edge. Needs more games before deployment.
+5. ~~**S4B validation.**~~ RESOLVED — S4B killed 2026-04-23.
+   Revalidation on 404 games collapsed +$1,105 to +$148.
 
-6. **Multi-strategy interaction.** S1, S3, and S4A operating
-   simultaneously in the same game has not been simulated.
-   Capital allocation across concurrent positions needs
-   scoping.
+6. ~~**Multi-strategy interaction.**~~ RESOLVED — only S4A
+   remains. No multi-strategy simulation needed. The add-on
+   tranche (second entry at $0.40–$0.45 within S4A) is
+   deferred, not a separate strategy requiring interaction
+   modeling.
 
 ---
 

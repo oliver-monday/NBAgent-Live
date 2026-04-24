@@ -55,6 +55,16 @@ of the S4A favorite-recovery curve. Output:
 - Ratchet implementation landed in the paper-trading engine
   same day (see entry above).
 
+## 2026-04-23 — S3 standalone KILLED
+
+S3 filters (WP momentum + fav + Q1/Q2) were noise-fitted on
+168 games — unfiltered outperformed filtered on 404 games. The
+$0.40 entry zone is subsumed by S4A's extended entry range
+analysis. Resolution-hold exit is dominated by S4A-style $0.90
+swing exits at every price level tested. No separate S3 engine
+module will be built. Spec rewritten as kill record:
+`docs/STRATEGY3_SPEC.md`.
+
 ## 2026-04-21 — Infrastructure: Forward-collection cron + logger schedule deprecation
 
 Addresses the ~60-day Kalshi trade-tape retention cliff by

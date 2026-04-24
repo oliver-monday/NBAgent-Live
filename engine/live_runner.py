@@ -570,7 +570,14 @@ def _tick_one_game(session: Session, ctx: GameContext, now: float) -> None:
         return
 
     if fav_bid is None or fav_bid <= SETTLE_THRESHOLD:
-        # Quote gone stale or market not yet live again — skip tick.
+        # Price below settle threshold — could be pre-tip penny
+        # grid OR a blowout where the favorite has collapsed.
+        # Either way, no trading signals to emit. But the market
+        # IS responding, so keep the idle timer alive to prevent
+        # premature exit during blowouts (see 2026-04-24 DEN-MIN
+        # incident: engine exited mid-Q4 because the favorite
+        # sat at $0.02 for 15 minutes).
+        session.last_active_at = now
         return
 
     signal = ctx.detector.update(now, fav_bid)

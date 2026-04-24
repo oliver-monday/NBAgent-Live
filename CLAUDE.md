@@ -52,31 +52,18 @@ until research produces a validated strategy spec.** Progress:
        backfill, all spreads). S1/S3-filtered/S4A/S4B all
        analyzed. Spread expansion (Part 8 Path B): all 7
        spread buckets positive EV.
-     - **Strategy 3 final state:** naive rule retracted
-       (negative EV on full entries). Filtered variant
-       (WP drop + fav + Q1/Q2 + upside exit) holdout-validated
-       at +$578–$825/yr test-set EV. Spec:
-       `docs/STRATEGY3_SPEC.md` §8.
-     - **Strategy 4 confirmed:** Dip-recovery swing trading.
-       +$7,075/yr core (|spread| ≤ 6), +$10,718/yr uncapped
-       (all 7 spread buckets positive EV on 404-game Kalshi
-       dataset). **Breakeven ratchet stop added 2026-04-23:**
-       stop moves from $0.40 to entry+$0.01 once price rises
-       ≥ $0.08 above entry. +$0.79/entry uplift, +$579/yr
-       pool-level on the 404-game set (engine replay-
-       validated, both modes PASS). Spec:
-       `docs/STRATEGY4_SPEC.md` (§5A). Position management
-       tested (baseline optimal, ratchet is stop-management
-       overlay). Prior-weighting tested (not useful). S4B
-       underdog hybrid +$1,105/yr, needs more data.
-     - **Phase 4a unlocked.** Two validated alpha sources
-       (S4A +$7,075 core / +$10,718 uncapped,
-       S3-filtered +$578–$825), combined
-       ~$7,653–$7,900/yr (core). S1 bilateral and S4B
-       underdog hybrid both killed 2026-04-23 (no
-       positive-EV configs on 404-game dataset). Specs:
-       `docs/STRATEGY4_SPEC.md`, `docs/STRATEGY1_SPEC.md`
-       (kill record).
+     - **Strategy 3: KILLED 2026-04-23.** Filters noise-fitted
+       on 168 games; entry zone subsumed by S4A extended range.
+       No engine module. Kill record: `docs/STRATEGY3_SPEC.md`.
+     - **Strategy 4 confirmed:** Dip-recovery swing trading
+       with breakeven ratchet (+$0.08 trigger). +$1,899/yr
+       pooled (404-game replay-validated, holdout 6/6).
+       Pre-ratchet per-bucket: +$7,075/yr core (|spread| ≤ 6),
+       +$10,718/yr uncapped. S4B underdog hybrid killed
+       2026-04-23. Spec: `docs/STRATEGY4_SPEC.md`.
+     - **Phase 4a unlocked.** Single alpha source: S4A with
+       ratchet (+$1,899/yr pooled). S1, S3, S4B all killed.
+       Add-on tranche (+$464/yr) validated but deferred.
    - Phase 3B formal COMPLETE (see above).
 4. **Phase 4** — Live decision engine. **Phase 4a unlocked
    2026-04-21.** Scoping in progress.
@@ -242,19 +229,16 @@ memory as starting from the first session's context.
   doc: active mid-flight threads, pending operator actions, watchlist
   items for session start, micro-state nuance. Supplements (doesn't
   replace) RESEARCH_LOG / ROADMAP. Updated at end of each session.
-- `docs/STRATEGY3_SPEC.md` — **living Strategy 3 rule spec.**
-  Current best-guess entry/exit rules, execution preferences,
-  operating parameters, and graduation status. The primary
-  deliverable of Phase 3. Supersedes `docs/strategy3_assessment.md`.
+- `docs/STRATEGY3_SPEC.md` — **Strategy 3 kill record.**
+  Killed 2026-04-23. Entry zone subsumed by S4A extended
+  range; filters noise-fitted. Original spec preserved
+  below kill header for audit trail.
 - `docs/STRATEGY4_SPEC.md` — **living Strategy 4 rule spec.**
-  Dip-recovery swing trading: buy favorite during temporary
-  underdog runs ($0.50–$0.75), exit at $0.90. Best single
-  strategy by annual EV (+$7,075/yr core, +$10,718/yr
-  uncapped across all spreads). Includes false-summit exit
-  analysis, spread expansion by bucket, prior-weighting
-  results, position management conclusions. **§5A
-  (2026-04-23): breakeven ratchet stop, engine replay-
-  validated, +$579/yr pool-level on 404 games.**
+  Dip-recovery swing trading with breakeven ratchet. Buy
+  favorite during temporary underdog runs ($0.50–$0.75),
+  exit at $0.90, ratchet stop at entry+$0.01 once price
+  rises +$0.08 above entry. +$1,899/yr pooled replay-
+  validated. Only active strategy in the alpha stack.
 - `docs/STRATEGY1_SPEC.md` — **Strategy 1 kill record.**
   Bilateral convergence / underdog swing trade: killed
   2026-04-23. Zero positive-EV configs on 404-game dataset.
