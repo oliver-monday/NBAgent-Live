@@ -1,0 +1,9 @@
+[2026-04-24T11:07:45.505792+00:00] Forward collection — target date 2026-04-23 (PT)
+[2026-04-24T11:07:45.741720+00:00] Scoreboard returned 3 events (3 with both teams resolved)
+[2026-04-24T11:07:45.741758+00:00] --- NYK@ATL espn_id=401869389 status=STATUS_FINAL ---
+[2026-04-24T11:08:34.915548+00:00]   OK ticker=KXNBAGAME-26APR23NYKATL wp_obs=23372 trades=113,846 scoring_plays=115
+[2026-04-24T11:08:36.915719+00:00] --- CLE@TOR espn_id=401869375 status=STATUS_FINAL ---
+[2026-04-24T11:09:00.923323+00:00]   OK ticker=KXNBAGAME-26APR23CLETOR wp_obs=23470 trades=53,085 scoring_plays=116
+[2026-04-24T11:09:02.923551+00:00] --- DEN@MIN espn_id=401869398 status=STATUS_FINAL ---
+[2026-04-24T11:09:35.423334+00:00]   OK ticker=KXNBAGAME-26APR23DENMIN wp_obs=23454 trades=72,661 scoring_plays=120
+[2026-04-24T11:09:37.423555+00:00] Summary: 3 ok, 0 failed, 3 attempted.
