@@ -1,0 +1,9 @@
+[2026-04-25T10:45:24.979984+00:00] Forward collection — target date 2026-04-24 (PT)
+[2026-04-25T10:45:25.177439+00:00] Scoreboard returned 3 events (3 with both teams resolved)
+[2026-04-25T10:45:25.177473+00:00] --- BOS@PHI espn_id=401869404 status=STATUS_FINAL ---
+[2026-04-25T10:46:01.066820+00:00]   OK ticker=KXNBAGAME-26APR24BOSPHI wp_obs=23390 trades=72,796 scoring_plays=102
+[2026-04-25T10:46:03.067010+00:00] --- LAL@HOU espn_id=401869400 status=STATUS_FINAL ---
+[2026-04-25T10:47:18.095149+00:00]   OK ticker=KXNBAGAME-26APR24LALHOU wp_obs=25961 trades=197,468 scoring_plays=119
+[2026-04-25T10:47:20.095338+00:00] --- SAS@POR espn_id=401869382 status=STATUS_FINAL ---
+[2026-04-25T10:47:58.537407+00:00]   OK ticker=KXNBAGAME-26APR24SASPOR wp_obs=26205 trades=104,850 scoring_plays=120
+[2026-04-25T10:48:00.537602+00:00] Summary: 3 ok, 0 failed, 3 attempted.
