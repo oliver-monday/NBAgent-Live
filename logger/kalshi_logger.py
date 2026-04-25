@@ -31,6 +31,7 @@ from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import requests
+from requests.adapters import HTTPAdapter
 
 # ---- Config -------------------------------------------------------------
 KALSHI_BASE = "https://api.elections.kalshi.com/trade-api/v2"
@@ -39,6 +40,13 @@ COMMIT_INTERVAL_SEC = int(os.environ.get("COMMIT_INTERVAL_SEC", "300"))
 MAX_RUN_SEC = int(os.environ.get("MAX_RUN_SEC", str(24 * 3600)))  # 24h; override via env if needed
 IDLE_EXIT_SEC = int(os.environ.get("IDLE_EXIT_SEC", "900"))  # 15 min
 REQUEST_TIMEOUT_SEC = 10
+
+# Cascade detection (Fix 2): if this many consecutive http_get_json calls
+# within a single cycle fail, force a session reset + short backoff before
+# continuing. Prevents the 2026-04-24 OKCPHX failure mode where a stale
+# connection pool caused every market's snapshot to time out at 10s each.
+CYCLE_FAILURE_CASCADE_THRESHOLD = 3
+CYCLE_CASCADE_BACKOFF_SEC = 15
 
 DATA_DIR = Path("data/orderbook_snapshots")
 
@@ -89,13 +97,95 @@ def log(msg: str) -> None:
     print(f"[{datetime.now(timezone.utc).isoformat()}] {msg}", flush=True)
 
 
+# ---- Managed HTTP session (Fix 1) ---------------------------------------
+# Background: urllib3's connection pool keeps TCP sockets alive across
+# requests. If a connection goes half-open (WiFi blip, laptop sleep/wake,
+# Kalshi edge restart) the local socket doesn't know the remote end is
+# dead; the next request picks that stale connection, sends the request,
+# and blocks on the read until REQUEST_TIMEOUT_SEC fires. We own the
+# Session so we can close it and recreate a fresh pool when we detect
+# this failure mode. See 2026-04-24 OKCPHX incident log.
+
+_session: Optional[requests.Session] = None
+# Track consecutive failures across calls. `reset_http_session` zeroes this.
+_consecutive_failures: int = 0
+
+
+def _build_session() -> requests.Session:
+    s = requests.Session()
+    # Small, known pool. Matches single-threaded cycle loop; leaves
+    # headroom for git push fetches etc. If we add concurrency later,
+    # bump pool_maxsize.
+    adapter = HTTPAdapter(pool_connections=4, pool_maxsize=8)
+    s.mount("https://", adapter)
+    s.mount("http://", adapter)
+    return s
+
+
+def _get_session() -> requests.Session:
+    global _session
+    if _session is None:
+        _session = _build_session()
+    return _session
+
+
+def reset_http_session(reason: str = "") -> None:
+    """Close the current session and rebuild. Called after cascading
+    failures to discard any stale/half-open connections. This is
+    deliberately heavyweight (drops the keep-alive pool); use
+    `_reset_failure_counter` instead when you only need to scope
+    cascade detection to a new cycle window."""
+    global _session, _consecutive_failures
+    suffix = f" ({reason})" if reason else ""
+    log(f"http: resetting session{suffix}")
+    if _session is not None:
+        try:
+            _session.close()
+        except Exception:
+            pass
+    _session = _build_session()
+    _consecutive_failures = 0
+
+
+def _reset_failure_counter() -> None:
+    """Zero the cascade counter without dropping the connection pool.
+    Called at cycle start so the cascade threshold is measured per
+    cycle, while keep-alive connections survive across cycles."""
+    global _consecutive_failures
+    _consecutive_failures = 0
+
+
+def consecutive_failures() -> int:
+    """Number of http_get_json failures since the last success or reset."""
+    return _consecutive_failures
+
+
 def http_get_json(url: str) -> Optional[Dict[str, Any]]:
-    """GET with timeout, returning parsed JSON or None on failure."""
+    """GET with timeout, returning parsed JSON or None on failure.
+
+    On timeout or connection error, the managed session is reset on the
+    spot — the next call gets a fresh TCP connection pool, which fixes
+    the stale-half-open-connection failure mode observed 2026-04-24.
+    Other errors (HTTPError, JSON decode) do not reset the session; they
+    just return None. Updates `_consecutive_failures` for cycle-level
+    cascade detection (Fix 2).
+    """
+    global _consecutive_failures
     try:
-        r = requests.get(url, timeout=REQUEST_TIMEOUT_SEC)
+        r = _get_session().get(url, timeout=REQUEST_TIMEOUT_SEC)
         r.raise_for_status()
+        _consecutive_failures = 0
         return r.json()
+    except (requests.exceptions.Timeout,
+            requests.exceptions.ConnectionError) as e:
+        _consecutive_failures += 1
+        log(f"http_get_json error for {url}: {e}")
+        # A single stale connection poisons all subsequent reuse. Drop
+        # the pool immediately; the next call rebuilds.
+        reset_http_session(reason=f"after {type(e).__name__} on {url}")
+        return None
     except Exception as e:
+        _consecutive_failures += 1
         log(f"http_get_json error for {url}: {e}")
         return None
 
@@ -366,6 +456,13 @@ def main() -> int:
         else:
             idle_since = None
             log(f"cycle: snapshotting {len(active)} markets")
+            # Fix 2: per-cycle cascade detection. Zero the failure
+            # counter at cycle start so "3 consecutive failures" is
+            # measured within this cycle's snapshot loop. Keep the
+            # connection pool warm — keep-alive across cycles is the
+            # whole point of the managed Session.
+            _reset_failure_counter()
+            aborted = False
             for m in active:
                 ticker = m.get("ticker")
                 if not ticker:
@@ -373,6 +470,26 @@ def main() -> int:
                 snap = snapshot_market(ticker, m)
                 if snap is not None:
                     write_snapshot(snap)
+                # If N consecutive http_get_json calls have failed,
+                # assume the network path is degraded (not a single
+                # bad market). Back off briefly, rebuild the session
+                # one more time, and skip the remaining markets this
+                # cycle — the next cycle will re-discover and retry.
+                if consecutive_failures() >= CYCLE_FAILURE_CASCADE_THRESHOLD:
+                    log(
+                        f"cycle: cascade of "
+                        f"{consecutive_failures()} consecutive HTTP "
+                        f"failures; backing off "
+                        f"{CYCLE_CASCADE_BACKOFF_SEC}s and skipping "
+                        f"remainder of cycle"
+                    )
+                    time.sleep(CYCLE_CASCADE_BACKOFF_SEC)
+                    reset_http_session(reason="cycle cascade backoff")
+                    aborted = True
+                    break
+            if aborted:
+                log("cycle: aborted early due to cascade; "
+                    "will retry on next cycle")
 
         # Periodic commit
         if time.time() - last_commit >= COMMIT_INTERVAL_SEC:
