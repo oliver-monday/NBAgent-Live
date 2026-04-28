@@ -1,0 +1,105 @@
+play_wallclock_utc,game_seconds_elapsed,period,game_clock,play_text,score_value,scoring_team_is_fav,fav_score_after,dog_score_after,score_margin_after,fav_wp_before,fav_wp_after,wp_delta,kalshi_price_before,kalshi_price_after,kalshi_price_delta,wp_vs_kalshi_reaction_diff
+2026-03-24 23:11:04+00:00,16.0,1,11:44,Maxime Raynaud makes 10-foot floating jump shot (Malik Monk assists),2,False,0,2,-2,0.885,0.871,-0.014000000000000012,0.9299999999999999,0.9299999999999999,0.0,-0.014000000000000012
+2026-03-24 23:11:20+00:00,33.0,1,11:27,Moussa Diabate makes layup (Miles Bridges assists),2,True,2,2,0,0.871,0.883,0.01200000000000001,0.9299999999999999,0.9299999999999999,0.0,0.01200000000000001
+2026-03-24 23:11:40+00:00,53.0,1,11:07,Maxime Raynaud makes two point shot (Malik Monk assists),2,False,2,4,-2,0.883,0.87,-0.013000000000000012,0.9299999999999999,0.9299999999999999,0.0,-0.013000000000000012
+2026-03-24 23:11:49+00:00,61.0,1,10:59,Moussa Diabate makes 2-foot alley oop dunk (Brandon Miller assists),2,True,4,4,0,0.87,0.882,0.01200000000000001,0.9299999999999999,0.9299999999999999,0.0,0.01200000000000001
+2026-03-24 23:12:33+00:00,73.0,1,10:47,Maxime Raynaud makes free throw 1 of 2,1,False,4,5,-1,0.864,0.861,-0.0030000000000000027,0.94,0.92,-0.019999999999999907,0.016999999999999904
+2026-03-24 23:12:54+00:00,73.0,1,10:47,Maxime Raynaud makes free throw 2 of 2,1,False,4,6,-2,0.861,0.87,0.009000000000000008,0.92,0.93,0.010000000000000009,-0.0010000000000000009
+2026-03-24 23:13:47+00:00,94.0,1,10:26,LaMelo Ball makes 33-foot three pointer (Miles Bridges assists),3,True,7,6,1,0.869,0.89,0.02100000000000002,0.92,0.92,0.0,0.02100000000000002
+2026-03-24 23:14:16+00:00,123.0,1,9:57,Moussa Diabate makes layup (Miles Bridges assists),2,True,9,6,3,0.899,0.907,0.008000000000000007,0.9299999999999999,0.9299999999999999,0.0,0.008000000000000007
+2026-03-24 23:15:10+00:00,157.0,1,9:23,LaMelo Ball makes 24-foot three point jumper (Moussa Diabate assists),3,True,12,6,6,0.915,0.93,0.015000000000000013,0.94,0.94,0.0,0.015000000000000013
+2026-03-24 23:15:18+00:00,167.0,1,9:13,DeMar DeRozan makes driving layup,2,False,12,8,4,0.93,0.923,-0.007000000000000006,0.94,0.94,0.0,-0.007000000000000006
+2026-03-24 23:15:45+00:00,193.0,1,8:47,Maxime Raynaud makes 6-foot driving floating jump shot (Malik Monk assists),2,False,12,10,2,0.915,0.906,-0.009000000000000008,0.94,0.95,0.010000000000000009,-0.019000000000000017
+2026-03-24 23:16:04+00:00,212.0,1,8:28,Kon Knueppel makes 27-foot three point jumper (Moussa Diabate assists),3,True,15,10,5,0.906,0.922,0.016000000000000014,0.95,0.95,0.0,0.016000000000000014
+2026-03-24 23:18:09+00:00,286.0,1,7:14,Miles Bridges makes driving layup,2,True,17,10,7,0.928,0.935,0.007000000000000006,0.94,0.96,0.020000000000000018,-0.013000000000000012
+2026-03-24 23:21:58+00:00,324.0,1,6:36,Josh Green makes 23-foot running jump shot (Brandon Miller assists),3,True,20,10,10,0.941,0.952,0.01100000000000001,0.95,0.95,0.0,0.01100000000000001
+2026-03-24 23:22:15+00:00,341.0,1,6:19,Dylan Cardwell makes 1-foot layup (Malik Monk assists),2,False,20,12,8,0.952,0.946,-0.006000000000000005,0.96,0.97,0.010000000000000009,-0.016000000000000014
+2026-03-24 23:22:45+00:00,364.0,1,5:56,Daeqwon Plowden makes running layup (Malik Monk assists),2,False,20,14,6,0.94,0.934,-0.005999999999999894,0.95,0.96,0.010000000000000009,-0.015999999999999903
+2026-03-24 23:23:14+00:00,364.0,1,5:56,Daeqwon Plowden makes free throw 1 of 1,1,False,20,15,5,0.921,0.927,0.006000000000000005,0.95,0.95,0.0,0.006000000000000005
+2026-03-24 23:23:39+00:00,387.0,1,5:33,Moussa Diabate makes layup (Josh Green assists),2,True,22,15,7,0.927,0.933,0.006000000000000005,0.95,0.95,0.0,0.006000000000000005
+2026-03-24 23:24:25+00:00,420.0,1,5:00,Dylan Cardwell makes tip shot,2,False,22,17,5,0.932,0.925,-0.007000000000000006,0.94,0.94,0.0,-0.007000000000000006
+2026-03-24 23:24:37+00:00,444.0,1,4:36,LaMelo Ball makes driving layup,2,True,24,15,9,0.925,0.932,0.007000000000000006,0.94,0.96,0.020000000000000018,-0.013000000000000012
+2026-03-24 23:26:43+00:00,511.0,1,3:29,Kon Knueppel makes driving layup (Ryan Kalkbrenner assists),2,True,26,15,11,0.945,0.956,0.01100000000000001,0.95,0.95,0.0,0.01100000000000001
+2026-03-24 23:27:05+00:00,533.0,1,3:07,Coby White makes 26-foot running pullup jump shot,3,True,29,15,14,0.96,0.969,0.009000000000000008,0.95,0.96,0.010000000000000009,-0.0010000000000000009
+2026-03-24 23:27:29+00:00,557.0,1,2:43,Devin Carter makes 6-foot two point shot (DeMar DeRozan assists),2,False,29,17,12,0.969,0.965,-0.0040000000000000036,0.97,0.97,0.0,-0.0040000000000000036
+2026-03-24 23:28:12+00:00,599.0,1,2:01,Coby White makes driving layup,2,True,31,17,14,0.956,0.969,0.013000000000000012,0.97,0.96,-0.010000000000000009,0.02300000000000002
+2026-03-24 23:32:05+00:00,643.0,1,1:17,Daeqwon Plowden makes running layup (DeMar DeRozan assists),2,False,31,19,12,0.96,0.965,0.0050000000000000044,0.98,0.97,-0.010000000000000009,0.015000000000000013
+2026-03-24 23:32:56+00:00,692.7,1,27.3,Daeqwon Plowden makes 1-foot dunk (Devin Carter assists),2,False,31,21,10,0.949,0.943,-0.006000000000000005,0.96,0.96,0.0,-0.006000000000000005
+2026-03-24 23:33:43+00:00,714.4,1,5.6,Coby White makes driving layup,2,True,33,21,12,0.943,0.959,0.016000000000000014,0.97,0.97,0.0,0.016000000000000014
+2026-03-24 23:34:35+00:00,714.4,1,5.6,Coby White makes free throw 1 of 1,1,True,34,21,13,0.958,0.963,0.0050000000000000044,0.96,0.96,0.0,0.0050000000000000044
+2026-03-24 23:34:46+00:00,720.0,1,0.0,Devin Carter makes driving layup,2,False,34,23,11,0.963,0.959,-0.0040000000000000036,0.96,0.96,0.0,-0.0040000000000000036
+2026-03-24 23:38:45+00:00,765.0,2,11:15,Maxime Raynaud makes 6-foot floating jump shot (Malik Monk assists),2,False,34,27,7,0.942,0.935,-0.006999999999999895,0.96,0.96,0.0,-0.006999999999999895
+2026-03-24 23:39:14+00:00,794.0,2,10:46,Coby White makes 27-foot running pullup jump shot,3,True,37,27,10,0.935,0.949,0.013999999999999901,0.95,0.96,0.010000000000000009,0.0039999999999998925
+2026-03-24 23:39:38+00:00,817.0,2,10:23,Maxime Raynaud makes 5-foot floating jump shot (Devin Carter assists),2,False,37,29,8,0.949,0.942,-0.007000000000000006,0.96,0.96,0.0,-0.007000000000000006
+2026-03-24 23:40:01+00:00,840.0,2,10:00,Sion James makes 22-foot three point jumper (LaMelo Ball assists),3,True,40,29,11,0.942,0.954,0.01200000000000001,0.96,0.96,0.0,0.01200000000000001
+2026-03-24 23:40:33+00:00,871.0,2,9:29,LaMelo Ball makes 27-foot three point step back jumpshot,3,True,43,29,14,0.959,0.969,0.010000000000000009,0.96,0.97,0.010000000000000009,0.0
+2026-03-24 23:40:49+00:00,888.0,2,9:12,Malik Monk makes driving layup,2,False,43,31,12,0.969,0.964,-0.0050000000000000044,0.97,0.97,0.0,-0.0050000000000000044
+2026-03-24 23:41:36+00:00,908.0,2,8:52,Sion James makes 26-foot three point jumper (LaMelo Ball assists),3,True,46,31,15,0.964,0.972,0.008000000000000007,0.97,0.98,0.010000000000000009,-0.0020000000000000018
+2026-03-24 23:42:08+00:00,939.0,2,8:21,Ryan Kalkbrenner makes 2-foot dunk (LaMelo Ball assists),2,True,48,31,17,0.976,0.979,0.0030000000000000027,0.97,0.97,0.0,0.0030000000000000027
+2026-03-24 23:47:33+00:00,1008.0,2,7:12,Patrick Baldwin Jr. makes 28-foot three point jumper (Malik Monk assists),3,False,48,34,14,0.979,0.973,-0.006000000000000005,0.98,0.99,0.010000000000000009,-0.016000000000000014
+2026-03-24 23:47:48+00:00,1024.0,2,6:56,Malik Monk makes running layup,2,False,48,36,12,0.969,0.964,-0.0050000000000000044,0.98,0.99,0.010000000000000009,-0.015000000000000013
+2026-03-24 23:47:53+00:00,1029.0,2,6:51,LaMelo Ball makes 27-foot three pointer (Brandon Miller assists),3,True,51,36,15,0.964,0.973,0.009000000000000008,0.99,0.98,-0.010000000000000009,0.019000000000000017
+2026-03-24 23:49:00+00:00,1063.0,2,6:17,Moussa Diabate makes free throw 1 of 2,1,True,52,36,16,0.979,0.982,0.0030000000000000027,0.98,0.98,0.0,0.0030000000000000027
+2026-03-24 23:49:29+00:00,1063.0,2,6:17,Moussa Diabate makes free throw 2 of 2,1,True,53,36,17,0.982,0.98,-0.0020000000000000018,0.98,0.98,0.0,-0.0020000000000000018
+2026-03-24 23:51:20+00:00,1106.0,2,5:34,Sion James makes running layup (Brandon Miller assists),2,True,55,36,19,0.983,0.985,0.0020000000000000018,0.98,0.98,0.0,0.0020000000000000018
+2026-03-24 23:51:40+00:00,1125.0,2,5:15,Maxime Raynaud makes 22-foot running jump shot (Devin Carter assists),3,False,55,39,16,0.985,0.98,-0.0050000000000000044,0.99,0.99,0.0,-0.0050000000000000044
+2026-03-24 23:52:35+00:00,1153.0,2,4:47,Devin Carter makes 29-foot three point jumper (DeMar DeRozan assists),3,False,55,42,13,0.977,0.969,-0.008000000000000007,0.98,0.98,0.0,-0.008000000000000007
+2026-03-24 23:56:26+00:00,1186.0,2,4:14,Brandon Miller makes 9-foot pullup jump shot,2,True,57,42,15,0.969,0.973,0.0040000000000000036,,0.98,,
+2026-03-24 23:56:42+00:00,1202.0,2,3:58,Daeqwon Plowden makes 1-foot layup (DeMar DeRozan assists),2,False,57,44,13,0.973,0.969,-0.0040000000000000036,0.98,0.98,0.0,-0.0040000000000000036
+2026-03-24 23:57:47+00:00,1237.0,2,3:23,Coby White makes 23-foot three point jumper (Miles Bridges assists),3,True,60,44,16,0.97,0.977,0.007000000000000006,0.97,0.97,0.0,0.007000000000000006
+2026-03-24 23:58:51+00:00,1255.0,2,3:05,Malik Monk makes free throw 1 of 2,1,False,60,45,15,0.975,0.97,-0.0050000000000000044,0.99,0.98,-0.010000000000000009,0.0050000000000000044
+2026-03-24 23:59:05+00:00,1266.0,2,2:54,Coby White makes 27-foot three point jumper (Kon Knueppel assists),3,True,63,45,18,0.978,0.984,0.006000000000000005,0.99,0.99,0.0,0.006000000000000005
+2026-03-24 23:59:28+00:00,1290.0,2,2:30,Daeqwon Plowden makes layup (DeMar DeRozan assists),2,False,63,47,16,0.984,0.981,-0.0030000000000000027,0.99,0.99,0.0,-0.0030000000000000027
+2026-03-24 23:59:48+00:00,1310.0,2,2:10,Moussa Diabate makes tip shot,2,True,65,47,18,0.981,0.984,0.0030000000000000027,0.98,0.98,0.0,0.0030000000000000027
+2026-03-25 00:00:13+00:00,1335.0,2,1:45,Brandon Miller makes 22-foot three point jumper,3,True,68,47,21,0.987,0.991,0.0040000000000000036,0.99,0.99,0.0,0.0040000000000000036
+2026-03-25 00:01:23+00:00,1380.3,2,59.7,Brandon Miller makes 2-foot driving dunk (LaMelo Ball assists),2,True,70,47,23,0.993,0.994,0.0010000000000000009,0.99,0.99,0.0,0.0010000000000000009
+2026-03-25 00:02:57+00:00,1437.4,2,2.6,Moussa Diabate makes free throw 1 of 2,1,True,71,47,24,0.997,0.997,0.0,,0.99,,
+2026-03-25 00:02:57+00:00,1437.4,2,2.6,Moussa Diabate makes free throw 2 of 2,1,True,72,47,25,0.997,0.996,-0.0010000000000000009,,0.99,,
+2026-03-25 00:18:59+00:00,1458.0,3,11:42,Kon Knueppel makes 23-foot three point jumper (LaMelo Ball assists),3,True,75,47,28,0.996,0.998,0.0020000000000000018,0.99,0.99,0.0,0.0020000000000000018
+2026-03-25 00:19:18+00:00,1478.0,3,11:22,Malik Monk makes 3-foot two point shot,2,False,75,49,26,0.998,0.998,0.0,,0.99,,
+2026-03-25 00:19:25+00:00,1486.0,3,11:14,LaMelo Ball makes 29-foot three pointer (Kon Knueppel assists),3,True,78,49,29,0.998,0.998,0.0,,0.99,,
+2026-03-25 00:19:42+00:00,1497.0,3,11:03,Devin Carter makes 7-foot driving floating jump shot,2,False,78,51,27,0.998,0.998,0.0,,0.99,,
+2026-03-25 00:20:08+00:00,1497.0,3,11:03,Devin Carter makes free throw 1 of 1,1,False,78,52,26,0.997,0.998,0.0010000000000000009,0.99,0.99,0.0,0.0010000000000000009
+2026-03-25 00:20:22+00:00,1509.0,3,10:51,Kon Knueppel makes 26-foot three point jumper (Brandon Miller assists),3,True,81,52,29,0.998,0.998,0.0,0.99,0.99,0.0,0.0
+2026-03-25 00:20:55+00:00,1544.0,3,10:16,Devin Carter makes 26-foot three pointer,3,False,81,55,26,0.998,0.998,0.0,0.99,,,
+2026-03-25 00:21:28+00:00,1576.0,3,9:44,Miles Bridges makes 1-foot dunk (LaMelo Ball assists),2,True,83,55,28,0.998,0.998,0.0,0.99,0.99,0.0,0.0
+2026-03-25 00:24:42+00:00,1592.0,3,9:28,DeMar DeRozan makes 19-foot jumper (Patrick Baldwin Jr. assists),2,False,83,57,26,0.998,0.998,0.0,,0.99,,
+2026-03-25 00:24:54+00:00,1604.0,3,9:16,Brandon Miller makes 25-foot three point jumper (Kon Knueppel assists),3,True,86,57,29,0.998,0.999,0.0010000000000000009,,,,
+2026-03-25 00:26:17+00:00,1658.0,3,8:22,LaMelo Ball makes 27-foot three pointer,3,True,89,57,32,0.999,0.999,0.0,,,,
+2026-03-25 00:27:20+00:00,1693.0,3,7:47,Kon Knueppel makes 25-foot running jump shot (Brandon Miller assists),3,True,92,57,35,0.999,0.999,0.0,,,,
+2026-03-25 00:28:42+00:00,1724.0,3,7:16,Miles Bridges makes free throw 2 of 2,1,True,93,57,36,0.999,0.999,0.0,,,,
+2026-03-25 00:29:04+00:00,1739.0,3,7:01,Miles Bridges makes running layup,2,True,95,57,38,0.999,0.999,0.0,,0.99,,
+2026-03-25 00:29:39+00:00,1766.0,3,6:34,Brandon Miller makes 26-foot three pointer (LaMelo Ball assists),3,True,98,57,41,0.999,0.999,0.0,0.99,,,
+2026-03-25 00:31:27+00:00,1827.0,3,5:33,Dylan Cardwell makes 9-foot floating jump shot (Malik Monk assists),2,False,98,59,39,0.999,0.999,0.0,,,,
+2026-03-25 00:31:56+00:00,1853.0,3,5:07,Daeqwon Plowden makes 1-foot running dunk (Malik Monk assists),2,False,98,61,37,0.999,0.999,0.0,,,,
+2026-03-25 00:36:11+00:00,1880.0,3,4:40,DeMar DeRozan makes 11-foot pullup jump shot (Malik Monk assists),2,False,98,63,35,0.999,0.999,0.0,,,,
+2026-03-25 00:36:44+00:00,1880.0,3,4:40,DeMar DeRozan makes free throw 1 of 1,1,False,98,64,34,0.999,0.999,0.0,,0.99,,
+2026-03-25 00:37:02+00:00,1893.0,3,4:27,Moussa Diabate makes two point shot,2,True,100,64,36,0.999,0.999,0.0,,,,
+2026-03-25 00:37:30+00:00,1893.0,3,4:27,Moussa Diabate makes free throw 1 of 1,1,True,101,64,37,0.999,0.999,0.0,,,,
+2026-03-25 00:38:02+00:00,1925.0,3,3:55,Miles Bridges makes running layup (LaMelo Ball assists),2,True,103,64,39,0.999,0.999,0.0,,,,
+2026-03-25 00:39:13+00:00,1934.0,3,3:46,Maxime Raynaud makes free throw 2 of 2,1,False,103,65,38,0.999,0.999,0.0,,,,
+2026-03-25 00:43:22+00:00,1992.0,3,2:48,Doug McDermott makes 26-foot three point jumper (Malik Monk assists),3,False,103,68,35,0.999,0.999,0.0,,,,
+2026-03-25 00:43:49+00:00,2019.0,3,2:21,Josh Green makes 25-foot three point jumper (Coby White assists),3,True,106,68,38,0.999,0.999,0.0,,,,
+2026-03-25 00:44:14+00:00,2045.0,3,1:55,Ryan Kalkbrenner makes two point shot,2,True,108,68,40,0.999,0.999,0.0,,,,
+2026-03-25 00:44:27+00:00,2057.0,3,1:43,Doug McDermott makes driving layup (Malik Monk assists),2,True,108,70,38,0.999,0.999,0.0,,,,
+2026-03-25 00:44:38+00:00,2067.0,3,1:33,Coby White makes 25-foot three pointer,3,True,111,70,41,0.999,0.999,0.0,,0.99,,
+2026-03-25 00:44:51+00:00,2082.0,3,1:18,Daeqwon Plowden makes 27-foot three point jumper (Malik Monk assists),3,False,111,73,38,0.999,0.999,0.0,,0.99,,
+2026-03-25 00:45:12+00:00,2101.2,3,58.8,Daeqwon Plowden makes 26-foot running pullup jump shot (Malik Monk assists),3,False,111,76,35,0.999,0.999,0.0,,0.99,,
+2026-03-25 00:46:12+00:00,2124.2,3,35.8,Coby White makes free throw 1 of 2,1,True,112,76,36,0.999,0.999,0.0,0.99,,,
+2026-03-25 00:46:33+00:00,2124.2,3,35.8,Coby White makes free throw 2 of 2,1,True,113,76,37,0.999,0.999,0.0,,,,
+2026-03-25 00:50:44+00:00,2200.0,4,11:20,Coby White makes driving layup,2,True,115,76,39,0.999,0.999,0.0,0.99,,,
+2026-03-25 00:51:20+00:00,2236.0,4,10:44,Coby White makes 25-foot three point jumper (Grant Williams assists),3,True,118,76,42,0.999,0.999,0.0,,,,
+2026-03-25 00:53:27+00:00,2312.0,4,9:28,Ryan Kalkbrenner makes 1-foot alley oop dunk (Sion James assists),2,True,120,76,44,0.999,0.999,0.0,,0.99,,
+2026-03-25 00:54:01+00:00,2346.0,4,8:54,Liam McNeeley makes driving layup (Grant Williams assists),2,True,122,76,46,0.999,0.999,0.0,,,,
+2026-03-25 00:55:11+00:00,2396.0,4,8:04,Patrick Baldwin Jr. makes 11-foot two point shot (Dylan Cardwell assists),2,False,122,78,44,0.999,0.999,0.0,0.99,,,
+2026-03-25 00:56:36+00:00,2431.0,4,7:29,Liam McNeeley makes free throw 1 of 2,1,True,123,78,45,0.999,0.999,0.0,,0.99,,
+2026-03-25 00:56:36+00:00,2431.0,4,7:29,Liam McNeeley makes free throw 2 of 2,1,True,124,78,46,0.999,0.999,0.0,,0.99,,
+2026-03-25 00:57:33+00:00,2448.0,4,7:12,Devin Carter makes driving layup,2,False,124,80,44,0.999,0.999,0.0,0.99,,,
+2026-03-25 00:58:10+00:00,2477.0,4,6:43,Doug McDermott makes driving layup (Daeqwon Plowden assists),2,False,124,82,42,0.999,0.999,0.0,0.99,,,
+2026-03-25 00:58:35+00:00,2501.0,4,6:19,Tre Mann makes 26-foot three pointer (Xavier Tillman assists),3,True,127,82,45,0.999,0.999,0.0,,,,
+2026-03-25 00:58:54+00:00,2521.0,4,5:59,Daeqwon Plowden makes 27-foot three point jumper (Doug McDermott assists),3,False,127,85,42,0.999,0.999,0.0,,,,
+2026-03-25 01:03:50+00:00,2600.0,4,4:40,Devin Carter makes 28-foot three point jumper (Doug McDermott assists),3,False,127,88,39,0.999,0.999,0.0,,,,
+2026-03-25 01:04:12+00:00,2621.0,4,4:19,Liam McNeeley makes 24-foot three point jumper (Xavier Tillman assists),3,True,130,88,42,0.999,0.999,0.0,,,,
+2026-03-25 01:05:10+00:00,2642.0,4,3:58,Xavier Tillman makes free throw 2 of 2,1,True,131,88,43,0.999,0.999,0.0,,,,
+2026-03-25 01:06:36+00:00,2692.0,4,3:08,Tre Mann makes 22-foot three point jumper (Xavier Tillman assists),3,True,134,88,46,0.999,0.999,0.0,0.99,,,
+2026-03-25 01:07:23+00:00,2739.0,4,2:21,Doug McDermott makes 12-foot fade away jump shot,2,False,134,90,44,0.999,0.999,0.0,,,,
