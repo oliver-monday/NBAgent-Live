@@ -537,10 +537,40 @@ def main() -> int:
 
     games = discover_games(args.filter)
     if not games:
-        raise SystemExit(
+        log(
             f"No *_timeseries.csv files in {PAIRED_DIR} "
-            f"(filter={args.filter!r})."
+            f"(filter={args.filter!r}) — writing stub report "
+            f"and exiting 0."
         )
+        REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        stub = [
+            "# WP vs Kalshi Paired Analysis — Cross-Game "
+            "Aggregation\n",
+            f"_Generated: {datetime.now(timezone.utc).isoformat()}_\n",
+            "",
+            "_No paired games available for aggregation. "
+            "This is expected if the paired dataset is empty "
+            "(e.g. fresh repo, off-season, or pre-pipeline-fix). "
+            "Re-run after data accumulates._",
+            "",
+        ]
+        REPORT_PATH.write_text("\n".join(stub) + "\n")
+        # Header-only summary CSV so any downstream consumer
+        # doesn't break on a missing file.
+        empty_cols = [
+            "ticker", "game_date", "away_team", "home_team",
+            "home_spread", "abs_spread", "n_ingame", "r_squared",
+            "slope", "p_value", "mean_delta", "mean_abs_delta",
+            "final_2m_abs_delta", "zone_buckets", "zone_seconds",
+            "zone_pct",
+        ]
+        PAIRED_DIR.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(columns=empty_cols).to_csv(
+            SUMMARY_CSV_PATH, index=False,
+        )
+        log(f"Stub report → {REPORT_PATH}")
+        log(f"Empty summary CSV → {SUMMARY_CSV_PATH}")
+        return 0
     log(f"Discovered {len(games)} games")
 
     meta_map = load_metadata(Path(args.metadata)) if args.metadata else {}

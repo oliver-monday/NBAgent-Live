@@ -105,6 +105,9 @@ data/
   orderbook_snapshots/      Kalshi snapshots — committed, irreplaceable
   pbp/                      ESPN PBP — gitignored, regenerable (~35m)
   espn_wp/                  ESPN WP timeseries — gitignored, regenerable
+  wp_kalshi_paired/         Audit logs + matched_games.csv committed;
+                            per-game CSVs in GH artifacts (90d) + local
+                            (sync via scripts/sync_paired_data.sh)
   nba_master_2025_26.csv    Game index with pre-game spreads (committed)
 docs/
   THESIS.md                 Long-term project thesis and framing
@@ -130,14 +133,18 @@ docs/
 - **`forward_collection.yml`** — nightly cron on GH Actions at
   10:00 UTC (03:00 PT). Runs `analysis/forward_collect.py`
   against yesterday's scoreboard, pulling ESPN PBP/WP + Kalshi
-  trade tape for each settled game into
-  `data/wp_kalshi_paired/`. Per-night audit log at
-  `data/wp_kalshi_paired/forward_runs/<date>.log`. Protects
-  against Kalshi's ~60-day trade-tape retention cliff.
+  trade tape for each settled game. Per-game CSVs
+  (`*_timeseries.csv`, `*_scoring_plays.csv`) are uploaded as
+  GH Actions artifacts (90-day retention), NOT committed to
+  the repo. The audit log
+  (`data/wp_kalshi_paired/forward_runs/<date>.log`) is
+  committed nightly as a watchdog signal. Protects against
+  Kalshi's ~60-day trade-tape retention cliff. Per-game data
+  syncs to Oliver's Mac via `scripts/sync_paired_data.sh`.
 - **`forward_collection_weekly.yml`** — Monday 11:00 UTC.
-  Refreshes `matched_games.csv` (ticker_matcher) and aggregate
-  summaries (wp_vs_kalshi_aggregate) over the accumulated
-  paired dataset.
+  Refreshes `matched_games.csv` only (`ticker_matcher`). The
+  aggregate step (`wp_vs_kalshi_aggregate`) was moved local
+  2026-04-30; Oliver runs it on demand against synced data.
 
 ## Key principles
 

@@ -2655,3 +2655,251 @@ distribution masked by aggregation.
 
 **The Tier 1 parameter sensitivity sweep planned as a follow-up
 is cancelled** — there is no stable Tier 1 to parameterize for.
+
+## 2026-04-28 — forward_collection_weekly diagnosis & fix
+
+**Failure:** 2026-04-27 weekly run of
+`forward_collection_weekly.yml` failed at the
+`wp_vs_kalshi_aggregate` step with `No *_timeseries.csv files
+in data/wp_kalshi_paired/`. The `ticker_matcher` step
+succeeded (1,237 / 1,243 ESPN games matched against 1,409
+KXNBAGAME events).
+
+**Root cause:** Scenario A — the per-game timeseries and
+scoring-plays CSVs were excluded from version control by
+`.gitignore` lines 27–28
+(`data/wp_kalshi_paired/KXNBAGAME-*_{timeseries,scoring_plays}.csv`).
+Files exist locally on Oliver's machine (420 timeseries + 420
+scoring_plays = 840 CSVs, ~190MB total) but were never reaching
+the GH Actions runner. The nightly `forward_collection.yml`
+calls `git add data/wp_kalshi_paired/` after writing per-game
+CSVs on the runner, but `git add` silently skips ignored paths
+— the runner produces the files, fails to commit them, and
+they're discarded with the runner. Each weekly run starts on
+a fresh checkout that never had them.
+
+The original gitignore comment ("180MB of CSVs across ~400
+games; gitignoring to stay inside GitHub's recommended repo
+size") reflected a deliberate space-saving call from the
+2026-04-21 backfill. The collateral damage to
+`forward_collection_weekly` was unanticipated.
+
+**Fix:**
+- `.gitignore` updated: removed
+  `data/wp_kalshi_paired/KXNBAGAME-*_timeseries.csv` and
+  `data/wp_kalshi_paired/KXNBAGAME-*_scoring_plays.csv`
+  patterns. Replaced the surrounding comment block with a
+  load-bearing explanation of why these CSVs MUST be tracked.
+  Raw JSON trade tapes (`*.json`, ~3GB) remain ignored.
+  Net repo-size impact: ~190MB added on Oliver's next push.
+- `analysis/wp_vs_kalshi_aggregate.py` made empty-discovery-
+  tolerant: writes a stub report and empty-header summary
+  CSV and returns 0 instead of raising `SystemExit(1)`.
+  Prevents this same failure mode from breaking the weekly
+  during off-season or any future empty-state condition.
+
+**Verification:** stub-fallback path tested via
+`--filter ZZZZZZZZZZ-NEVERMATCH` → exit 0; stub report
+written; summary CSV exactly 1 line (header). Real
+aggregate restored on the unfiltered run: 420 games
+discovered, 421-line summary CSV. `git check-ignore` confirms
+sample timeseries CSV is no longer ignored; sample JSON cache
+is still ignored.
+
+**Operator action:** Oliver to commit the 840 newly-trackable
+files (~190MB total) via GitHub Desktop in his next push so
+the runner can see them on next Monday's weekly run
+(2026-05-04). Going forward the nightly's `git add` step
+will pick up new per-game CSVs automatically.
+
+## 2026-04-30 — forward_collection migrated to artifact-based architecture
+
+**Motivation:** the 2026-04-28 `.gitignore` fix unblocked the
+weekly but pushed ~190MB of per-game CSVs to the repo with
+~5MB/night ongoing growth. No on-GH process needs the bulk
+data — only Oliver does, locally. The aggregate step that
+read them was the only on-GH consumer, and Oliver consumes
+the aggregate's output, not its inputs.
+
+**New architecture:**
+- Nightly stays on GH; per-game CSVs (`*_timeseries.csv`,
+  `*_scoring_plays.csv`) uploaded as GH Actions artifacts
+  (90-day retention) instead of committed.
+- Repo continues to track the small / load-bearing files:
+  `forward_runs/<date>.log` audit logs, `matched_games.csv`,
+  `aggregate_summary.csv`, plus the analysis-output CSVs
+  already in place.
+- Existing 840 tracked per-game CSVs untracked via
+  `git ls-files | xargs git rm --cached`. Local copies
+  preserved on Oliver's Mac (still 420 + 420 on disk).
+- Weekly workflow keeps `ticker_matcher` only; aggregate
+  step removed (the `analysis/wp_vs_kalshi_aggregate.py`
+  defensive guard from 2026-04-28 stays as a safety net for
+  any future on-GH revival).
+- New `scripts/sync_paired_data.sh` pulls recent artifacts
+  via `gh` CLI on demand. Args: `30` / `90` / `all` days.
+  `gh` was already installed via Homebrew (2.90.0).
+
+**Operator actions:** (a) review the staged 840 deletions in
+GitHub Desktop and commit, (b) run `gh auth login` once for
+the sync script, (c) test sync with
+`./scripts/sync_paired_data.sh 7`.
+
+**Repo size impact:** main checkout drops from ~250MB tracked
+to ~60MB after Oliver's deletion commit. History still
+carries the 190MB (BFG cleanup is a separate, deferred
+operation; not load-bearing — GitHub doesn't care about
+history bloat at this scale, and a force-push rewrite would
+break Oliver's local clones).
+
+**Watch:** next Monday's weekly run (2026-05-04) succeeds
+with `ticker_matcher` only. Next nightly run uploads
+artifact and commits only audit log + small CSVs.
+
+## 2026-04-30 — Paper trade journal review (n=9 nights)
+
+First systematic comparison of live S4A engine behavior
+against the ratcheted backtest projections. Sample: 9
+journal files (2026-04-21 → 2026-04-30), 26 distinct
+(date, game_id) pairs observed, 3 entries logged. Of the
+26 games, only 3 were "well-observed" (≥120 ticks ≈ ≥1h
+of polling); the remaining 23 had ~10–40 ticks each,
+consistent with very short engine sessions before
+manual kill or idle exit.
+
+**Verdict:** BLOCK.
+
+**Key findings:**
+- All 3 entries fired in-spec ($0.66, $0.71, $0.73 — all
+  within [$0.50, $0.75]). Entries / well-observed-game
+  ratio = 1.12× (within [0.5, 2.0] band).
+- Zero closes (`close_target` / `close_stop` /
+  `close_ratchet_stop` / `close_eod`) ever logged across
+  the 3 open entries. Engine has not observed a single
+  full S4A entry-to-exit cycle.
+- 10 of 12 session_starts have no matching session_end.
+  Both observed session_ends carry `interrupted=true`
+  — confirming graceful shutdown path is rare.
+- `game_finished` event type is documented in
+  PHASE4A_DESIGN but never emitted by the writer; every
+  tick has `market_status="active"`. The engine has
+  never observed a market resolve in-journal.
+- `tick.ratchet_triggered` field never present (only on
+  `trade` records starting 2026-04-28). Ratchet inference
+  in this review walks tick price trajectories.
+
+**Anomalies flagged:**
+- HIGH: 10 unmatched session_starts (interrupted shutdowns).
+- HIGH: 3 entries / 0 closes — load-bearing finding.
+- MEDIUM: 3 of 26 games show tick-gap anomalies (median
+  >60s or max >5min).
+- MEDIUM: 0 / 26 games reached `game_finished` (engine
+  doesn't emit this type).
+- LOW: 1 pick'em game (DEN-at-MIN 2026-04-23, first
+  fav_bid = $0.50 exactly). Engine resolved DEN as
+  favorite (likely from pre-game spread). Worth tracking.
+
+**Recommended next:** diagnose the zero-closes finding
+before continuing to accumulate paper-trade data. Most
+likely cause: sessions terminate before any exit signal
+fires (consistent with all session_ends carrying
+`interrupted=true`). Verify by replaying one of the 3
+entries against `engine.replay` and confirming a close
+action would fire on the same data.
+
+Full report: `docs/analysis_outputs/paper_journal_review.md`.
+
+## 2026-04-30 — Paper-trade journal data loss diagnosed
+
+**Symptom (from journal review v1):** 3 entries / 0 closes
+across 8 game-nights, vs 24 entries / 24 closes in terminal
+session_summary log lines. Journal review verdict was BLOCK
+based on what reached disk.
+
+**Investigation:** Diagnosis D — neither pure iCloud nor
+pure code bug. The repo IS in `~/Documents/NBAgent-Live/`
+(an iCloud-syncable tree), but `~/Library/Mobile Documents/`
+is empty and journal files carry no `.icloud` placeholders
+or iCloud xattrs — iCloud Drive isn't actively the smoking
+gun on this machine. The empty-discovery code bug is real
+but didn't fire (all 8 sessions discovered ≥3 games). The
+actual data-loss pattern: every session's journal contains
+records for the first 3–48 minutes, then abruptly stops;
+**every** journal's last record is a `tick`, never a
+`session_end`, despite `journal.append(session_end)` being
+called and the subsequent `log()` line firing in terminal
+for 7/8 sessions. Per-file inventory:
+
+| Date | Term opens | Disk opens | Term closes | Disk closes | session_end on disk |
+|---|---:|---:|---:|---:|:---:|
+| 4-21 | 4 | 2 | 4 | 0 | (only short test sessions wrote ends) |
+| 4-22 | 0 | 0 | 0 | 0 | no |
+| 4-23 | 0 | 0 | 0 | 0 | no |
+| 4-24 | 3 | 0 | 3 | 0 | no |
+| 4-25 | 5 | 0 | 5 | 0 | no |
+| 4-26 | 5 | 0 | 5 | 0 | no |
+| 4-28 | 4 | 1 | 4 | 0 | no |
+| 4-29 | 2 | 0 | 2 | 0 | no |
+| 4-30 | 1 | 3 | 1 | 2 | no (still active) |
+
+**Root cause:** Python's line-buffered text-mode writes
+sit in user-space + kernel page cache without explicit
+`fsync()`. Long-running paper-trading processes get
+suspended/throttled by macOS App Nap (despite caffeinate),
+and buffered bytes that hadn't been pushed to disk are
+lost when the process is paused or the page cache is
+evicted. The `~/Documents/` location compounds the risk
+even when iCloud isn't active (Time Machine snapshots,
+Spotlight indexing, Finder thumbnail generation all touch
+the path more aggressively than other trees).
+
+**Fixes applied:**
+- `engine/live_runner.py` empty-discovery exit path now
+  emits a `session_end` record (was emitting only
+  `session_start`). Includes an `exit_reason:
+  no_games_discovered` field so off-night journals are
+  unambiguous.
+- `Journal.append()` now calls `flush()` + `os.fsync()`
+  after every write. JSON-encode failures and OS write
+  failures log to stderr with a counter (was silent).
+  Writes to a closed handle log a WARN instead of raising.
+- `Journal.close()` now flushes + fsyncs before closing
+  (was relying on close() implicitly). Reports failed-write
+  count on close.
+- `run_session()` warns at startup if the journal path is
+  inside `~/Documents/`, `~/Desktop/`, or `~/Downloads/`
+  with a recommendation to move the repo.
+
+**Verification (synthetic test):** 100 records written
+through the new `Journal` class WITHOUT calling `close()`
+(simulating ungraceful termination) all survived to disk
+and parsed cleanly. The fsync-per-write makes every
+record durable independent of close().
+
+**Operator action required:** the existing 8 journals
+remain untouched — the data they contain (however
+incomplete) is part of the audit trail. For future
+sessions:
+1. Move the repo out of `~/Documents/` (recommended:
+   `~/Code/NBAgent-Live`) to eliminate the iCloud /
+   Spotlight / Time Machine risk surface.
+2. Run the next paper-trading session from the new
+   location. The fsync hardening will protect against
+   App Nap / suspend-related loss regardless of path.
+
+**Implication for journal review v1 verdict:** the BLOCK
+was correct given what was on disk, but the underlying
+engine behavior (per terminal log) was healthy: 24/24
+closes booked across 7 clean sessions, ratchet fired 7
+times, target/stop/ratchet/EOD distribution roughly
+aligns with backtest shape. After fix + fresh post-move
+paper-trading data, journal review v2 should converge to
+terminal numbers.
+
+**Performance directional note:** terminal-derived
+results across 24 entries: hit rate 5/24 = 20.8% vs
+backtest 41.6%; mean P&L -$6.10 vs backtest +$3.92;
+total -$146.37 across 8 nights. Sample is too small for
+EV claims (need 50+ entries) but worth flagging as a
+watch item — if the gap persists past n=50, dig into
+regime change / playoff dynamics / execution-model error.

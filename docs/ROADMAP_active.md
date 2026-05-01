@@ -239,3 +239,59 @@ flow-vs-game-state disambiguator for §6.6.
   schedule stripped — `workflow_dispatch` only. Watch items:
   first nightly run committing as expected; off-night log
   behavior; repo growth from committed paired data.
+- **Forward-collection migrated to artifact-based architecture
+  (2026-04-30).** Per-game CSVs now live in GH Actions
+  artifacts (90-day retention) + Oliver's local Mac, not in
+  the repo. Repo plateaus at ~60MB. Aggregate moved local
+  via `scripts/sync_paired_data.sh` + manual
+  `python -m analysis.wp_vs_kalshi_aggregate`. Supersedes the
+  2026-04-28 "weekly hardened" entry — that fix unblocked the
+  weekly but pushed 190MB into the repo with ongoing growth;
+  the artifact migration fixes that. The empty-discovery
+  defensive guard from 2026-04-28 stays in place as a safety
+  net. Watch:
+  - 2026-05-04: weekly succeeds with ticker_matcher only.
+  - First nightly post-migration: artifact uploads, audit
+    log commits, no per-game CSVs in commit diff.
+  - First sync run by Oliver: `gh auth login` works,
+    artifacts pull cleanly.
+- **Paper trade journal review (2026-04-30).** First
+  systematic comparison ran. Verdict: **BLOCK**. Two HIGH
+  findings to diagnose before continuing accumulation:
+  (1) 10 of 12 session_starts have no session_end (all
+  observed ends carry `interrupted=true`); (2) 3 entries
+  opened but 0 closes ever logged — engine has not
+  observed a single entry-to-exit cycle. Entries that
+  did fire are spec-compliant ($0.66, $0.71, $0.73).
+  Re-review cadence: every 5 game-nights or on engine
+  change. Tooling:
+  `analysis/paper_journal_review.py`. Report:
+  `docs/analysis_outputs/paper_journal_review.md`.
+- **Paper-trade journal data-loss fix (2026-04-30).**
+  Diagnosed the journal review v1 BLOCK as a writer
+  durability bug, not an engine logic bug: terminal
+  session_summary lines show 24 entries / 24 closes
+  across the 8-night sample, vs 3 entries / 0 closes
+  on disk. Root cause: line-buffered text-mode writes
+  sitting in Python / kernel page cache without explicit
+  fsync, lost when the long-running process gets
+  suspended by macOS App Nap. Repo location
+  (`~/Documents/`) compounds the risk surface
+  (iCloud / Spotlight / Time Machine). Fixed:
+  `Journal.append()` now flushes + fsyncs every record;
+  empty-discovery path now emits a `session_end`;
+  startup logs a WARNING if the journal path is in a
+  default-iCloud-synced tree. Operator action: move
+  the repo out of `~/Documents/` (recommended
+  `~/Code/NBAgent-Live`) before the next paper-trading
+  session. Watch:
+  - Next paper-trading session: synthetic write test
+    passes; live journal records match terminal.
+  - Re-run paper journal review v2 after 3+ nights of
+    post-fix data; verdict should move from BLOCK to
+    CLEAN/CONCERNS.
+- **S4A live performance variance (2026-04-30).**
+  Terminal-derived 24-entry sample shows hit rate
+  20.8% vs backtest 41.6%, mean P&L -$6.10 vs +$3.92.
+  Within statistical noise at n=24 but worth tracking.
+  Re-evaluate at n=50.

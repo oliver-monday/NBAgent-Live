@@ -1,5 +1,77 @@
 # Resolved Roadmap
 
+## 2026-04-30 — Paper-trade journal writer hardened
+
+Diagnosed >85% paper-trade journal data loss as a writer
+durability bug rather than engine logic — terminal
+session_summary lines proved 24 entries / 24 closes across
+the 8-night sample while only 3 opens / 0 closes reached
+disk. Root cause: line-buffered text-mode writes lost when
+the long-running Python process is suspended by macOS App
+Nap (despite caffeinate); repo location (`~/Documents/`)
+compounds the risk surface (iCloud / Spotlight / Time
+Machine). Fixes in `engine/live_runner.py`:
+(1) empty-discovery exit path now emits a `session_end`;
+(2) `Journal.append()` flushes + fsyncs every write, logs
+errors to stderr, tracks a failed-write counter;
+(3) `Journal.close()` flushes + fsyncs before closing;
+(4) `run_session()` warns at startup if the journal path
+is inside `~/Documents/`, `~/Desktop/`, or `~/Downloads/`.
+Synthetic test: 100 records survived ungraceful
+termination (no `close()` call), all parsed cleanly.
+Existing 8 journals untouched — preserved as audit trail.
+Operator action: move repo out of `~/Documents/`
+(recommended `~/Code/NBAgent-Live`) before next session.
+
+## 2026-04-30 — Paper trade journal review v1
+
+Built `analysis/paper_journal_review.py` and ran first
+review against ~9 nights of paper-trading data
+(2026-04-21 → 2026-04-30, 26 distinct games observed,
+3 entries logged, 0 closes). Verdict: **BLOCK**. Two HIGH
+findings: (1) 10 of 12 sessions terminated without writing
+session_end (all observed ends carry `interrupted=true`);
+(2) zero closes recorded across 3 entries — engine has
+not observed a full entry-to-exit cycle. Entries that did
+fire are all spec-compliant ($0.66 / $0.71 / $0.73 in the
+$0.50–$0.75 band). Diagnosis of the zero-closes finding
+is the next step before continuing to accumulate
+paper-trade data. Report:
+`docs/analysis_outputs/paper_journal_review.md`.
+
+## 2026-04-30 — forward_collection artifact migration
+
+Migrated `forward_collection.yml` to upload per-game CSVs
+as GH Actions artifacts (90-day retention) rather than
+commit them to the repo. Untracked existing 840 files
+(~190MB) via `git ls-files | xargs git rm --cached` (local
+files preserved on disk). Removed the `wp_vs_kalshi_aggregate`
+step from `forward_collection_weekly.yml`; aggregate now runs
+local on demand. Created `scripts/sync_paired_data.sh` for
+`gh`-based artifact sync (gh CLI 2.90.0 already installed via
+Homebrew). Updated `.gitignore` to ignore
+`*_timeseries.csv` / `*_scoring_plays.csv` going forward.
+Updated `CLAUDE.md` workflow + repo-structure sections.
+Supersedes the 2026-04-28 "weekly hardened" fix; the
+defensive guard in `wp_vs_kalshi_aggregate.py` from that
+prompt stays as a safety net.
+
+## 2026-04-28 — forward_collection_weekly fix
+
+Diagnosed and fixed `forward_collection_weekly`'s 2026-04-27
+failure. Root cause: Scenario A — per-game `*_timeseries.csv`
+and `*_scoring_plays.csv` files were gitignored by
+`.gitignore` lines 27–28, so the nightly `git add` step
+silently skipped them on the runner; the weekly then ran on
+a clean checkout that never saw them. Fix: removed the two
+ignore patterns (190MB of derived CSVs are now tracked; raw
+JSON trade tapes still ignored) and added a defensive guard
+to `analysis/wp_vs_kalshi_aggregate.py` (stub report +
+empty-header summary CSV + exit 0 on empty discovery). Watch
+item in `ROADMAP_active.md` for next Monday's run
+confirmation (2026-05-04). Operator action: Oliver to commit
+840 newly-trackable CSVs via GitHub Desktop.
+
 ## 2026-04-23 — S4A engine ratchet implementation
 
 Breakeven ratchet stop wired into the Phase 4a paper-trading

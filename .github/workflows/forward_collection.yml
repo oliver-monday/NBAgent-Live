@@ -58,10 +58,23 @@ jobs:
             python -m analysis.forward_collect
           fi
 
+      - name: Upload per-game CSVs as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-kalshi-paired-${{ github.run_id }}
+          path: |
+            data/wp_kalshi_paired/*_timeseries.csv
+            data/wp_kalshi_paired/*_scoring_plays.csv
+          retention-days: 90
+          if-no-files-found: warn
+
       - name: Commit new paired data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Per-game CSVs are gitignored (uploaded as artifact above);
+          # broad add picks up audit logs + matched_games.csv +
+          # aggregate_summary.csv automatically and skips ignored paths.
           git add data/wp_kalshi_paired/
           if git diff --cached --quiet; then
             echo "No changes to commit."

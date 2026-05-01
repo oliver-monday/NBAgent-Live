@@ -293,20 +293,91 @@ def resolve_favorite(ctx: GameContext, now_ts: float) -> None:
 
 @dataclass
 class Journal:
+    """JSONL writer with defensive flush + fsync.
+
+    The runtime concern this class addresses: a long-lived
+    paper-trading process buffers writes that may sit in
+    Python or kernel buffers for hours. Without explicit
+    flush + fsync, in-flight data is exposed to:
+      - macOS iCloud sync (Documents/Desktop/Downloads),
+        which can evict or truncate in-progress writes.
+      - Process termination (SIGHUP, SIGKILL, terminal
+        close, laptop sleep on battery).
+      - OS-level page cache failures.
+
+    Each append() now: writes the line, flushes Python's
+    buffer to the kernel, and calls os.fsync() to force
+    the kernel to push to disk. Slower per write but
+    guarantees durability of every record.
+
+    Append failures are logged to stderr (not silently
+    swallowed). The process continues — losing one record
+    is preferable to crashing mid-game.
+    """
     path: Path
     _fh: Any = field(default=None, init=False, repr=False)
+    _failed_writes: int = field(default=0, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._fh = self.path.open("a", buffering=1)  # line-buffered
 
     def append(self, record: dict) -> None:
-        self._fh.write(json.dumps(record) + "\n")
+        if self._fh is None:
+            self._failed_writes += 1
+            log(
+                f"WARN: Journal.append called on closed handle "
+                f"(record type={record.get('type')!r}); skipped."
+            )
+            return
+        try:
+            line = json.dumps(record) + "\n"
+            self._fh.write(line)
+            self._fh.flush()
+            try:
+                import os as _os
+                _os.fsync(self._fh.fileno())
+            except OSError:
+                # fsync can legitimately fail on some FS
+                # (e.g., overlayfs, network mounts). Don't
+                # treat as fatal — the flush already pushed
+                # to the kernel.
+                pass
+        except (TypeError, ValueError) as e:
+            # JSON-serialization failure. Log, count, continue.
+            self._failed_writes += 1
+            log(
+                f"ERROR: Journal.append JSON encode failed for "
+                f"record type={record.get('type')!r}: "
+                f"{type(e).__name__}: {e}"
+            )
+        except OSError as e:
+            # Disk write failed. Log, count, continue.
+            self._failed_writes += 1
+            log(
+                f"ERROR: Journal.append OS write failed for "
+                f"record type={record.get('type')!r}: "
+                f"{type(e).__name__}: {e}"
+            )
 
     def close(self) -> None:
         if self._fh is not None:
+            try:
+                self._fh.flush()
+                try:
+                    import os as _os
+                    _os.fsync(self._fh.fileno())
+                except OSError:
+                    pass
+            except OSError:
+                pass
             self._fh.close()
             self._fh = None
+        if self._failed_writes:
+            log(
+                f"WARN: Journal closed with "
+                f"{self._failed_writes} failed write(s)."
+            )
 
 
 def _iso(ts: float) -> str:
@@ -392,6 +463,31 @@ def run_session(args: argparse.Namespace) -> int:
     journal = Journal(journal_path)
     log(f"Journal: {journal_path}")
 
+    # iCloud safety check: ~/Documents, ~/Desktop, ~/Downloads
+    # are iCloud-synced by default on modern macOS. iCloud's
+    # daemon can evict or truncate files being actively written,
+    # causing silent data loss. Warn loudly on every session
+    # start so the operator can choose to move the repo before
+    # data is lost.
+    journal_str = str(journal_path.resolve())
+    home = str(Path.home())
+    risky_prefixes = [
+        f"{home}/Documents/",
+        f"{home}/Desktop/",
+        f"{home}/Downloads/",
+    ]
+    for prefix in risky_prefixes:
+        if journal_str.startswith(prefix):
+            log(
+                f"WARNING: journal path is inside "
+                f"{prefix} which is iCloud-synced by default. "
+                "iCloud can evict or truncate active writes, "
+                "causing silent data loss. RECOMMEND moving "
+                "the repo to ~/Code/, ~/Projects/, or any "
+                "non-synced location before continued use."
+            )
+            break
+
     ratchet = getattr(args, "ratchet", 0.08)
     manager = PositionManager(
         ratchet_trigger=ratchet if ratchet and ratchet > 0 else None,
@@ -406,10 +502,26 @@ def run_session(args: argparse.Namespace) -> int:
     games = discover_nba_markets()
     if not games:
         log("No NBA games discovered. Exiting.")
+        now_ts = time.time()
         journal.append({
             "type": "session_start",
-            "ts": _iso(time.time()),
+            "ts": _iso(now_ts),
             "games_found": 0,
+        })
+        journal.append({
+            "type": "session_end",
+            "ts": _iso(now_ts),
+            "summary": {
+                "entries": 0, "closes": 0,
+                "closed_target": 0, "closed_stop": 0,
+                "closed_ratchet_stop": 0, "closed_eod": 0,
+                "total_pnl": 0.0, "mean_pnl": 0.0,
+                "hit_pct": 0.0, "open_positions": 0,
+                "ratchet_events": 0,
+                "runtime_sec": 0.0,
+                "interrupted": False,
+                "exit_reason": "no_games_discovered",
+            },
         })
         journal.close()
         return 0

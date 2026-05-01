@@ -1,16 +1,14 @@
 name: forward_collection_weekly
 
-# Weekly refresh of consolidated indexes over the accumulated paired
-# dataset. The nightly forward_collection workflow writes per-game
-# timeseries/plays/cache files directly; this job rebuilds the
-# cross-game artifacts that are cheaper to refresh in bulk than on
-# every nightly run.
+# Weekly refresh of the matched_games.csv ESPN↔Kalshi join.
+# The aggregate step (wp_vs_kalshi_aggregate) was moved local
+# 2026-04-30 — Oliver runs it on demand against synced data.
+# Per-game CSVs no longer live in the repo; nightly uploads
+# them as GH Actions artifacts (see forward_collection.yml).
 #
 # Outputs refreshed:
 #   - data/wp_kalshi_paired/matched_games.csv
 #     (ticker_matcher.py: full ESPN↔Kalshi join over nba_master)
-#   - data/wp_kalshi_paired/aggregate_summary.csv
-#   - docs/analysis_outputs/wp_vs_kalshi_aggregate.md
 
 on:
   schedule:
@@ -51,14 +49,11 @@ jobs:
       - name: Refresh matched_games.csv
         run: python -m analysis.ticker_matcher
 
-      - name: Refresh aggregate summaries
-        run: python -m analysis.wp_vs_kalshi_aggregate
-
       - name: Commit refreshed indexes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/wp_kalshi_paired/ docs/analysis_outputs/
+          git add data/wp_kalshi_paired/
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
