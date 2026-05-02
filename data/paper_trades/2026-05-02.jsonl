@@ -1,0 +1,4 @@
+{"type": "session_start", "ts": "2026-05-02T23:34:57.582088+00:00", "games_found": 0}
+{"type": "session_end", "ts": "2026-05-02T23:34:57.582088+00:00", "summary": {"entries": 0, "closes": 0, "closed_target": 0, "closed_stop": 0, "closed_ratchet_stop": 0, "closed_eod": 0, "total_pnl": 0.0, "mean_pnl": 0.0, "hit_pct": 0.0, "open_positions": 0, "ratchet_events": 0, "runtime_sec": 0.0, "interrupted": false, "exit_reason": "no_games_discovered"}}
+{"type": "session_start", "ts": "2026-05-02T23:36:04.049309+00:00", "games_found": 0}
+{"type": "session_end", "ts": "2026-05-02T23:36:04.049309+00:00", "summary": {"entries": 0, "closes": 0, "closed_target": 0, "closed_stop": 0, "closed_ratchet_stop": 0, "closed_eod": 0, "total_pnl": 0.0, "mean_pnl": 0.0, "hit_pct": 0.0, "open_positions": 0, "ratchet_events": 0, "runtime_sec": 0.0, "interrupted": false, "exit_reason": "no_games_discovered"}}
