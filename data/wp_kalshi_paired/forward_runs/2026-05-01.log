@@ -1,0 +1,9 @@
+[2026-05-02T10:53:37.542111+00:00] Forward collection — target date 2026-05-01 (PT)
+[2026-05-02T10:53:37.919640+00:00] Scoreboard returned 3 events (3 with both teams resolved)
+[2026-05-02T10:53:37.919677+00:00] --- DET@ORL espn_id=401869417 status=STATUS_FINAL ---
+[2026-05-02T10:54:22.867786+00:00]   OK ticker=KXNBAGAME-26MAY01DETORL wp_obs=5666 trades=95,824 scoring_plays=95
+[2026-05-02T10:54:24.867961+00:00] --- CLE@TOR espn_id=401869381 status=STATUS_FINAL ---
+[2026-05-02T10:55:11.606816+00:00]   OK ticker=KXNBAGAME-26MAY01CLETOR wp_obs=13841 trades=99,928 scoring_plays=118
+[2026-05-02T10:55:13.606990+00:00] --- LAL@HOU espn_id=401869409 status=STATUS_FINAL ---
+[2026-05-02T10:56:02.212186+00:00]   OK ticker=KXNBAGAME-26MAY01LALHOU wp_obs=5618 trades=104,281 scoring_plays=95
+[2026-05-02T10:56:04.212359+00:00] Summary: 3 ok, 0 failed, 3 attempted.
