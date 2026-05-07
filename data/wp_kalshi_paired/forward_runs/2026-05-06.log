@@ -1,0 +1,7 @@
+[2026-05-07T11:48:55.596769+00:00] Forward collection — target date 2026-05-06 (PT)
+[2026-05-07T11:48:55.709998+00:00] Scoreboard returned 2 events (2 with both teams resolved)
+[2026-05-07T11:48:55.710031+00:00] --- PHI@NYK espn_id=401871160 status=STATUS_FINAL ---
+[2026-05-07T11:49:34.216794+00:00]   OK ticker=KXNBAGAME-26MAY06PHINYK wp_obs=11376 trades=101,951 scoring_plays=116
+[2026-05-07T11:49:36.216987+00:00] --- MIN@SAS espn_id=401871153 status=STATUS_FINAL ---
+[2026-05-07T11:50:02.005455+00:00]   OK ticker=KXNBAGAME-26MAY06MINSAS wp_obs=15757 trades=67,457 scoring_plays=123
+[2026-05-07T11:50:04.005634+00:00] Summary: 2 ok, 0 failed, 2 attempted.
