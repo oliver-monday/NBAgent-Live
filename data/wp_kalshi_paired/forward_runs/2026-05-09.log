@@ -1,0 +1,7 @@
+[2026-05-10T11:01:10.586193+00:00] Forward collection — target date 2026-05-09 (PT)
+[2026-05-10T11:01:10.677020+00:00] Scoreboard returned 2 events (2 with both teams resolved)
+[2026-05-10T11:01:10.677043+00:00] --- DET@CLE espn_id=401871335 status=STATUS_FINAL ---
+[2026-05-10T11:01:49.714512+00:00]   OK ticker=KXNBAGAME-26MAY09DETCLE wp_obs=15104 trades=95,257 scoring_plays=120
+[2026-05-10T11:01:51.714700+00:00] --- OKC@LAL espn_id=401871328 status=STATUS_FINAL ---
+[2026-05-10T11:02:32.137006+00:00]   OK ticker=KXNBAGAME-26MAY09OKCLAL wp_obs=20166 trades=101,269 scoring_plays=117
+[2026-05-10T11:02:34.137198+00:00] Summary: 2 ok, 0 failed, 2 attempted.
