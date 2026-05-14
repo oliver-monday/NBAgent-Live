@@ -1,0 +1,5 @@
+[2026-05-14T11:53:48.058167+00:00] Forward collection — target date 2026-05-13 (PT)
+[2026-05-14T11:53:48.297373+00:00] Scoreboard returned 1 events (1 with both teams resolved)
+[2026-05-14T11:53:48.297404+00:00] --- CLE@DET espn_id=401871337 status=STATUS_FINAL ---
+[2026-05-14T11:54:55.090262+00:00]   OK ticker=KXNBAGAME-26MAY13CLEDET wp_obs=11682 trades=154,082 scoring_plays=127
+[2026-05-14T11:54:57.090501+00:00] Summary: 1 ok, 0 failed, 1 attempted.
