@@ -1,0 +1,5 @@
+[2026-05-20T12:25:56.975496+00:00] Forward collection — target date 2026-05-19 (PT)
+[2026-05-20T12:25:57.057776+00:00] Scoreboard returned 1 events (1 with both teams resolved)
+[2026-05-20T12:25:57.057826+00:00] --- CLE@NYK espn_id=401873341 status=STATUS_FINAL ---
+[2026-05-20T12:27:17.138396+00:00]   OK ticker=KXNBAGAME-26MAY19CLENYK wp_obs=5682 trades=217,744 scoring_plays=115
+[2026-05-20T12:27:19.138591+00:00] Summary: 1 ok, 0 failed, 1 attempted.
