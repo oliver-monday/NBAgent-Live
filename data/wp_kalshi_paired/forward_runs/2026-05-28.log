@@ -1,0 +1,5 @@
+[2026-05-29T12:48:01.490532+00:00] Forward collection — target date 2026-05-28 (PT)
+[2026-05-29T12:48:01.628515+00:00] Scoreboard returned 1 events (1 with both teams resolved)
+[2026-05-29T12:48:01.628548+00:00] --- OKC@SAS espn_id=401873202 status=STATUS_FINAL ---
+[2026-05-29T12:49:08.512211+00:00]   OK ticker=KXNBAGAME-26MAY28OKCSAS wp_obs=11519 trades=160,548 scoring_plays=108
+[2026-05-29T12:49:10.512414+00:00] Summary: 1 ok, 0 failed, 1 attempted.
