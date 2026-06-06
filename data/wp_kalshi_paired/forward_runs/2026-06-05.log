@@ -1,0 +1,5 @@
+[2026-06-06T11:27:35.742385+00:00] Forward collection — target date 2026-06-05 (PT)
+[2026-06-06T11:27:35.797460+00:00] Scoreboard returned 1 events (1 with both teams resolved)
+[2026-06-06T11:27:35.797480+00:00] --- NYK@SAS espn_id=401859964 status=STATUS_FINAL ---
+[2026-06-06T11:30:47.776220+00:00]   OK ticker=KXNBAGAME-26JUN05NYKSAS wp_obs=17306 trades=468,343 scoring_plays=109
+[2026-06-06T11:30:49.776409+00:00] Summary: 1 ok, 0 failed, 1 attempted.
